@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="ru">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <title>Charterstone Cards</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <!-- Fixed header with controls -->
+  <header class="header">
+    <div class="controls">
+      <div class="card-input-group">
+        <input type="number" id="archiveNumInput" placeholder="Номер карточки" min="1">
+        <button id="openCardBtn">Открыть</button>
+      </div>
+      <div class="language-toggle">
+        <button id="langRu" class="lang-btn active">RU</button>
+        <button id="langEn" class="lang-btn">EN</button>
+      </div>
+    </div>
+
+    <!-- Navigation tabs -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="rules">Правила</button>
+      <button class="tab-btn" data-tab="history">История</button>
+    </nav>
+
+    <!-- Import/Export buttons -->
+    <div class="io-controls">
+      <button id="exportBtn">Экспорт</button>
+      <button id="importBtn">Импорт</button>
+      <input type="file" id="importFile" accept="application/json" style="display: none;">
+    </div>
+  </header>
+
+  <!-- Main content area -->
+  <main class="main-content">
+    <!-- Rules tab -->
+    <section id="rulesTab" class="tab-content active">
+      <h2>Правила (29)</h2>
+      <div id="rulesList" class="slots-list"></div>
+    </section>
+
+    <!-- History tab -->
+    <section id="historyTab" class="tab-content">
+      <h2>История (18)</h2>
+      <div id="historyList" class="slots-list"></div>
+    </section>
+  </main>
+
+  <!-- Card viewing dialog -->
+  <dialog id="cardDialog" class="card-dialog">
+    <div class="dialog-content">
+      <button class="close-btn" id="closeDialog">&times;</button>
+      <img id="cardImage" class="card-image" alt="Card">
+      <div class="dialog-actions" id="dialogActions">
+        <button id="placeInRulesBtn" class="action-btn">Поставить в правило</button>
+        <button id="placeInHistoryBtn" class="action-btn">Поставить в историю</button>
+      </div>
+    </div>
+  </dialog>
+
+  <!-- Placement dialog for rules -->
+  <dialog id="placementDialog" class="placement-dialog">
+    <div class="dialog-content">
+      <h3 id="placementTitle">Выберите слот</h3>
+      <input type="number" id="slotInput" min="1">
+      <div class="placement-actions">
+        <button id="confirmPlacement" class="action-btn">Подтвердить</button>
+        <button id="cancelPlacement" class="action-btn secondary">Отмена</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="app.js"></script>
+</body>
+
+</html>
