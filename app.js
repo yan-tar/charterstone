@@ -7,6 +7,7 @@ let state = {
 let language = 'ru';
 let currentCard = null;
 let placementType = null; // 'rules' or 'history'
+let navigationContext = null; // { type: 'rules' | 'history', currentIndex: number }
 
 // Initialize application
 async function init() {
@@ -90,6 +91,10 @@ function setupEventListeners() {
     document.getElementById('closeDialog').addEventListener('click', closeCardDialog);
     document.getElementById('placeInRulesBtn').addEventListener('click', () => showPlacementDialog('rules'));
     document.getElementById('placeInHistoryBtn').addEventListener('click', () => showPlacementDialog('history'));
+
+    // Card navigation buttons
+    document.getElementById('prevCardBtn').addEventListener('click', navigateToPrevCard);
+    document.getElementById('nextCardBtn').addEventListener('click', navigateToNextCard);
 
     // Placement dialog actions
     document.getElementById('confirmPlacement').addEventListener('click', confirmPlacement);
@@ -184,6 +189,7 @@ async function openCard() {
         }
 
         currentCard = cardNumber;
+        navigationContext = null; // No navigation when opening directly
         showCardDialog();
     } catch (e) {
         showError('Ошибка при загрузке карточки');
@@ -205,12 +211,22 @@ function checkImageExists(path) {
 function showCardDialog() {
     const dialog = document.getElementById('cardDialog');
     const actions = document.getElementById('dialogActions');
+    const navigation = document.getElementById('cardNavigation');
     
     updateCardImage();
 
-    // Show action buttons only if card is not placed anywhere
-    const isPlaced = isCardPlaced(currentCard);
-    actions.style.display = isPlaced ? 'none' : 'flex';
+    // Show/hide navigation based on context
+    if (navigationContext) {
+        navigation.style.display = 'flex';
+        updateNavigationUI();
+        // When viewing from list, never show action buttons (card is already placed)
+        actions.style.display = 'none';
+    } else {
+        navigation.style.display = 'none';
+        // When opened directly via input, show action buttons only if card is not placed
+        const isPlaced = isCardPlaced(currentCard);
+        actions.style.display = isPlaced ? 'none' : 'flex';
+    }
 
     dialog.showModal();
 }
@@ -226,6 +242,7 @@ function updateCardImage() {
 function closeCardDialog() {
     document.getElementById('cardDialog').close();
     currentCard = null;
+    navigationContext = null;
 }
 
 // Check if card is placed anywhere
@@ -386,10 +403,9 @@ function createSlotElement(number, cardNumber, type) {
         thumbnail.loading = 'lazy';
         slot.appendChild(thumbnail);
 
-        // Click to view card
+        // Click to view card with navigation
         slot.addEventListener('click', () => {
-            currentCard = cardNumber;
-            showCardDialog();
+            openCardWithNavigation(cardNumber, type, number);
         });
     } else {
         const emptyText = document.createElement('span');
@@ -399,6 +415,104 @@ function createSlotElement(number, cardNumber, type) {
     }
 
     return slot;
+}
+
+// Open card with navigation context
+function openCardWithNavigation(cardNumber, type, slotNumber) {
+    currentCard = cardNumber;
+    
+    // Find the index in the appropriate list
+    const list = type === 'rule' ? state.rules : state.history;
+    const index = list.findIndex(item => {
+        const itemNumber = type === 'rule' ? item.ruleNumber : item.index;
+        return itemNumber === slotNumber;
+    });
+    
+    navigationContext = {
+        type: type,
+        currentIndex: index
+    };
+    
+    showCardDialog();
+}
+
+// Navigate to previous card in the list
+function navigateToPrevCard() {
+    if (!navigationContext) return;
+    
+    const list = navigationContext.type === 'rule' ? state.rules : state.history;
+    let newIndex = navigationContext.currentIndex - 1;
+    
+    // Find previous non-empty slot
+    while (newIndex >= 0) {
+        if (list[newIndex].card !== null) {
+            navigationContext.currentIndex = newIndex;
+            currentCard = list[newIndex].card;
+            updateCardImage();
+            updateNavigationUI();
+            return;
+        }
+        newIndex--;
+    }
+}
+
+// Navigate to next card in the list
+function navigateToNextCard() {
+    if (!navigationContext) return;
+    
+    const list = navigationContext.type === 'rule' ? state.rules : state.history;
+    let newIndex = navigationContext.currentIndex + 1;
+    
+    // Find next non-empty slot
+    while (newIndex < list.length) {
+        if (list[newIndex].card !== null) {
+            navigationContext.currentIndex = newIndex;
+            currentCard = list[newIndex].card;
+            updateCardImage();
+            updateNavigationUI();
+            return;
+        }
+        newIndex++;
+    }
+}
+
+// Update navigation UI (info text and button states)
+function updateNavigationUI() {
+    if (!navigationContext) return;
+    
+    const list = navigationContext.type === 'rule' ? state.rules : state.history;
+    const currentItem = list[navigationContext.currentIndex];
+    const itemNumber = navigationContext.type === 'rule' ? currentItem.ruleNumber : currentItem.index;
+    const typeName = navigationContext.type === 'rule' ? 'Правило' : 'История';
+    
+    // Update info text
+    const navInfo = document.getElementById('navInfo');
+    navInfo.textContent = `${typeName} #${itemNumber}`;
+    
+    // Update button states
+    const prevBtn = document.getElementById('prevCardBtn');
+    const nextBtn = document.getElementById('nextCardBtn');
+    
+    // Check if there's a previous non-empty slot
+    let hasPrev = false;
+    for (let i = navigationContext.currentIndex - 1; i >= 0; i--) {
+        if (list[i].card !== null) {
+            hasPrev = true;
+            break;
+        }
+    }
+    
+    // Check if there's a next non-empty slot
+    let hasNext = false;
+    for (let i = navigationContext.currentIndex + 1; i < list.length; i++) {
+        if (list[i].card !== null) {
+            hasNext = true;
+            break;
+        }
+    }
+    
+    prevBtn.disabled = !hasPrev;
+    nextBtn.disabled = !hasNext;
 }
 
 // Export state
