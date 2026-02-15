@@ -6,7 +6,7 @@
     },
     {
       "ruleNumber": 2,
-      "card": null
+      "card": 126
     },
     {
       "ruleNumber": 3,
@@ -14,23 +14,23 @@
     },
     {
       "ruleNumber": 4,
-      "card": 504
+      "card": 127
     },
     {
       "ruleNumber": 5,
-      "card": null
+      "card": 15
     },
     {
       "ruleNumber": 6,
-      "card": null
+      "card": 506
     },
     {
       "ruleNumber": 7,
-      "card": null
+      "card": 507
     },
     {
       "ruleNumber": 8,
-      "card": null
+      "card": 508
     },
     {
       "ruleNumber": 9,
@@ -38,7 +38,7 @@
     },
     {
       "ruleNumber": 10,
-      "card": null
+      "card": 510
     },
     {
       "ruleNumber": 11,
@@ -50,7 +50,7 @@
     },
     {
       "ruleNumber": 13,
-      "card": null
+      "card": 111
     },
     {
       "ruleNumber": 14,
@@ -58,7 +58,7 @@
     },
     {
       "ruleNumber": 15,
-      "card": null
+      "card": 515
     },
     {
       "ruleNumber": 16,
@@ -66,19 +66,19 @@
     },
     {
       "ruleNumber": 17,
-      "card": null
+      "card": 517
     },
     {
       "ruleNumber": 18,
-      "card": 14
+      "card": 29
     },
     {
       "ruleNumber": 19,
-      "card": null
+      "card": 519
     },
     {
       "ruleNumber": 20,
-      "card": null
+      "card": 520
     },
     {
       "ruleNumber": 21,
@@ -86,35 +86,35 @@
     },
     {
       "ruleNumber": 22,
-      "card": null
+      "card": 522
     },
     {
       "ruleNumber": 23,
-      "card": null
+      "card": 523
     },
     {
       "ruleNumber": 24,
-      "card": null
+      "card": 524
     },
     {
       "ruleNumber": 25,
-      "card": null
+      "card": 525
     },
     {
       "ruleNumber": 26,
-      "card": null
+      "card": 125
     },
     {
       "ruleNumber": 27,
-      "card": null
+      "card": 20
     },
     {
       "ruleNumber": 28,
-      "card": null
+      "card": 18
     },
     {
       "ruleNumber": 29,
-      "card": null
+      "card": 19
     }
   ],
   "history": [
@@ -140,7 +140,7 @@
     },
     {
       "index": 6,
-      "card": null
+      "card": 128
     },
     {
       "index": 7,
