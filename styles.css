@@ -15,6 +15,9 @@ body {
 /* Header - fixed at top */
 .header {
     position: fixed;
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
     top: 0;
     left: 0;
     right: 0;
@@ -30,7 +33,6 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
-    margin-bottom: 12px;
 }
 
 .card-input-group {
@@ -45,6 +47,7 @@ body {
     border: 1px solid #ddd;
     border-radius: 4px;
     font-size: 16px;
+    width: 100px;
 }
 
 .card-input-group button {
@@ -88,7 +91,7 @@ body {
 .tabs {
     display: flex;
     gap: 8px;
-    margin-bottom: 12px;
+    align-items: center;
 }
 
 .tab-btn {
@@ -112,11 +115,12 @@ body {
 .io-controls {
     display: flex;
     gap: 8px;
+    align-items: center;
 }
 
 .io-controls button {
     flex: 1;
-    padding: 8px 16px;
+    padding: 10px;
     background: #f5f5f5;
     border: 1px solid #ddd;
     border-radius: 4px;
@@ -151,17 +155,14 @@ body {
 
 /* Slots list */
 .slots-list {
-    display: flex;
-    flex-direction: column;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px,1fr));
     gap: 12px;
 }
 
 .slot {
     display: flex;
     align-items: center;
-    padding: 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 6px;
     background: #fafafa;
     cursor: pointer;
     transition: background 0.2s;
@@ -181,21 +182,21 @@ body {
     font-weight: 600;
     font-size: 14px;
     color: #666;
-    min-width: 40px;
+    min-width: 25px;
+    display: none;
 }
 
 .slot-thumbnail {
-    width: 60px;
-    height: 60px;
+    width: 120px;
+    height: 160px;
     object-fit: cover;
     border-radius: 4px;
-    margin-left: 12px;
 }
 
 .slot-empty-text {
     color: #999;
     font-size: 14px;
-    margin-left: 12px;
+    display: none;
 }
 
 /* Card dialog */
@@ -253,6 +254,7 @@ body {
     background: #f5f5f5;
     border-radius: 6px;
     gap: 12px;
+    order: 1;
 }
 
 .nav-btn {
@@ -398,14 +400,25 @@ body {
 /* Responsive adjustments */
 @media (min-width: 768px) {
     .main-content {
-        max-width: 600px;
+        max-width: 1600px;
         margin-left: auto;
         margin-right: auto;
     }
     
     .header {
-        left: 50%;
-        transform: translateX(-50%);
-        max-width: 600px;
+        flex-direction: row;
+        max-width: 1600px;
+        margin-inline: auto;
+        gap: 40px;
+        justify-content: center;
+    }
+
+    .slots-list {
+      grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+    }
+
+    .slot-thumbnail {
+      width: 100%;
+      height: auto;
     }
 }
