@@ -11,7 +11,8 @@
     },
     {
       "ruleNumber": 3,
-      "card": 36
+      "card": 36,
+      "new": true
     },
     {
       "ruleNumber": 4,
@@ -35,7 +36,8 @@
     },
     {
       "ruleNumber": 9,
-      "card": 90
+      "card": 90,
+      "new": true
     },
     {
       "ruleNumber": 10,
@@ -63,7 +65,8 @@
     },
     {
       "ruleNumber": 16,
-      "card": 33
+      "card": 33,
+      "new": true
     },
     {
       "ruleNumber": 17,
@@ -145,7 +148,8 @@
     },
     {
       "index": 7,
-      "card": 129
+      "card": 129,
+      "new": true
     },
     {
       "index": 8,

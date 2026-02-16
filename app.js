@@ -487,6 +487,7 @@ function placeCardInRules(cardNumber, ruleNumber) {
     const ruleIndex = state.rules.findIndex(r => r.ruleNumber === ruleNumber);
     if (ruleIndex !== -1) {
         state.rules[ruleIndex].card = cardNumber;
+        state.rules[ruleIndex].new = true;
         saveState();
     }
 }
@@ -500,6 +501,7 @@ function placeCardInHistory(cardNumber, index) {
     const historyIndex = state.history.findIndex(h => h.index === index);
     if (historyIndex !== -1) {
         state.history[historyIndex].card = cardNumber;
+        state.history[historyIndex].new = true;
         saveState();
     }
 }
@@ -510,6 +512,7 @@ function removeCardFromEverywhere(cardNumber) {
     state.rules.forEach(rule => {
         if (rule.card === cardNumber) {
             rule.card = null;
+            delete rule.new;
         }
     });
 
@@ -517,6 +520,7 @@ function removeCardFromEverywhere(cardNumber) {
     state.history.forEach(item => {
         if (item.card === cardNumber) {
             item.card = null;
+            delete item.new;
         }
     });
 }
@@ -545,8 +549,17 @@ function renderHistory() {
 
 // Create slot element
 function createSlotElement(number, cardNumber, type) {
+    const slotData = type === 'rule' 
+        ? state.rules.find(r => r.ruleNumber === number)
+        : state.history.find(h => h.index === number);
+    
     const slot = document.createElement('div');
     slot.className = cardNumber ? 'slot' : 'slot empty';
+    
+    // Add 'new' class if card is marked as new
+    if (slotData && slotData.new === true) {
+        slot.classList.add('new');
+    }
 
     const numberSpan = document.createElement('span');
     numberSpan.className = 'slot-number';
@@ -790,7 +803,8 @@ function validateState(importedState) {
     for (let i = 0; i < importedState.rules.length; i++) {
         const rule = importedState.rules[i];
         if (!rule || typeof rule.ruleNumber !== 'number' || 
-            (rule.card !== null && typeof rule.card !== 'number')) {
+            (rule.card !== null && typeof rule.card !== 'number') ||
+            (rule.new !== undefined && typeof rule.new !== 'boolean')) {
             return false;
         }
     }
@@ -799,7 +813,8 @@ function validateState(importedState) {
     for (let i = 0; i < importedState.history.length; i++) {
         const item = importedState.history[i];
         if (!item || typeof item.index !== 'number' || 
-            (item.card !== null && typeof item.card !== 'number')) {
+            (item.card !== null && typeof item.card !== 'number') ||
+            (item.new !== undefined && typeof item.new !== 'boolean')) {
             return false;
         }
     }
