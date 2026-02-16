@@ -121,6 +121,7 @@ function setupEventListeners() {
 }
 
 // Switch language
+// Switch language
 function switchLanguage(lang) {
     language = lang;
     saveLanguage();
@@ -129,7 +130,20 @@ function switchLanguage(lang) {
     
     // Update card image if dialog is open
     if (currentCard !== null && document.getElementById('cardDialog').open) {
-        updateCardImage();
+        const spinner = document.getElementById('loadingSpinner');
+        const cardImage = document.getElementById('cardImage');
+        
+        // Show spinner while loading new language image
+        spinner.style.display = 'flex';
+        cardImage.style.display = 'none';
+        
+        loadCardImage().then(() => {
+            spinner.style.display = 'none';
+            cardImage.style.display = 'block';
+        }).catch(() => {
+            spinner.style.display = 'none';
+            showError('Ошибка загрузки изображения');
+        });
     }
 }
 
@@ -169,6 +183,7 @@ function renderCurrentTab() {
 }
 
 // Open card by number
+// Open card by number
 async function openCard() {
     const input = document.getElementById('archiveNumInput');
     const cardNumber = parseInt(input.value);
@@ -178,22 +193,33 @@ async function openCard() {
         return;
     }
 
+    const openBtn = document.getElementById('openCardBtn');
+    openBtn.disabled = true;
+    openBtn.textContent = 'Загрузка...';
+
     const cardPath = `cards/${language}/${cardNumber}.jpg`;
 
-    // Check if image exists
+    // Check if image exists and load it
     try {
         const exists = await checkImageExists(cardPath);
         if (!exists) {
             showError(`Карточка №${cardNumber} не найдена`);
+            openBtn.disabled = false;
+            openBtn.textContent = 'Открыть';
             return;
         }
 
         currentCard = cardNumber;
         navigationContext = null; // No navigation when opening directly
         showCardDialog();
+        
+        openBtn.disabled = false;
+        openBtn.textContent = 'Открыть';
     } catch (e) {
         showError('Ошибка при загрузке карточки');
         console.error(e);
+        openBtn.disabled = false;
+        openBtn.textContent = 'Открыть';
     }
 }
 
@@ -208,27 +234,46 @@ function checkImageExists(path) {
 }
 
 // Show card dialog
+// Show card dialog
 function showCardDialog() {
     const dialog = document.getElementById('cardDialog');
     const actions = document.getElementById('dialogActions');
     const navigation = document.getElementById('cardNavigation');
+    const spinner = document.getElementById('loadingSpinner');
+    const cardImage = document.getElementById('cardImage');
     
-    updateCardImage();
-
-    // Show/hide navigation based on context
-    if (navigationContext) {
-        navigation.style.display = 'flex';
-        updateNavigationUI();
-        // When viewing from list, never show action buttons (card is already placed)
-        actions.style.display = 'none';
-    } else {
-        navigation.style.display = 'none';
-        // When opened directly via input, show action buttons only if card is not placed
-        const isPlaced = isCardPlaced(currentCard);
-        actions.style.display = isPlaced ? 'none' : 'flex';
-    }
-
+    // Show spinner, hide image initially
+    spinner.style.display = 'flex';
+    cardImage.style.display = 'none';
+    actions.style.display = 'none';
+    
+    // Open dialog first
     dialog.showModal();
+    
+    // Load image
+    loadCardImage().then(() => {
+        // Hide spinner, show image
+        spinner.style.display = 'none';
+        cardImage.style.display = 'block';
+        
+        // Show/hide navigation based on context
+        if (navigationContext) {
+            navigation.style.display = 'flex';
+            updateNavigationUI();
+            // When viewing from list, never show action buttons (card is already placed)
+            actions.style.display = 'none';
+        } else {
+            navigation.style.display = 'none';
+            // When opened directly via input, show action buttons only if card is not placed
+            const isPlaced = isCardPlaced(currentCard);
+            actions.style.display = isPlaced ? 'none' : 'flex';
+        }
+    }).catch((error) => {
+        // Hide spinner and show error
+        spinner.style.display = 'none';
+        showError('Ошибка загрузки изображения');
+        closeCardDialog();
+    });
 }
 
 // Update card image in dialog
@@ -236,6 +281,28 @@ function updateCardImage() {
     const img = document.getElementById('cardImage');
     const cardPath = `cards/${language}/${currentCard}.jpg`;
     img.src = cardPath;
+}
+
+// Load card image and return promise
+function loadCardImage() {
+    return new Promise((resolve, reject) => {
+        const img = document.getElementById('cardImage');
+        const cardPath = `cards/${language}/${currentCard}.jpg`;
+        
+        // Create temporary image to preload
+        const tempImg = new Image();
+        
+        tempImg.onload = () => {
+            img.src = cardPath;
+            resolve();
+        };
+        
+        tempImg.onerror = () => {
+            reject(new Error('Failed to load image'));
+        };
+        
+        tempImg.src = cardPath;
+    });
 }
 
 // Close card dialog
@@ -437,6 +504,7 @@ function openCardWithNavigation(cardNumber, type, slotNumber) {
 }
 
 // Navigate to previous card in the list
+// Navigate to previous card in the list
 function navigateToPrevCard() {
     if (!navigationContext) return;
     
@@ -448,14 +516,28 @@ function navigateToPrevCard() {
         if (list[newIndex].card !== null) {
             navigationContext.currentIndex = newIndex;
             currentCard = list[newIndex].card;
-            updateCardImage();
-            updateNavigationUI();
+            
+            // Show loading state
+            const spinner = document.getElementById('loadingSpinner');
+            const cardImage = document.getElementById('cardImage');
+            spinner.style.display = 'flex';
+            cardImage.style.display = 'none';
+            
+            loadCardImage().then(() => {
+                spinner.style.display = 'none';
+                cardImage.style.display = 'block';
+                updateNavigationUI();
+            }).catch(() => {
+                spinner.style.display = 'none';
+                showError('Ошибка загрузки изображения');
+            });
             return;
         }
         newIndex--;
     }
 }
 
+// Navigate to next card in the list
 // Navigate to next card in the list
 function navigateToNextCard() {
     if (!navigationContext) return;
@@ -468,8 +550,21 @@ function navigateToNextCard() {
         if (list[newIndex].card !== null) {
             navigationContext.currentIndex = newIndex;
             currentCard = list[newIndex].card;
-            updateCardImage();
-            updateNavigationUI();
+            
+            // Show loading state
+            const spinner = document.getElementById('loadingSpinner');
+            const cardImage = document.getElementById('cardImage');
+            spinner.style.display = 'flex';
+            cardImage.style.display = 'none';
+            
+            loadCardImage().then(() => {
+                spinner.style.display = 'none';
+                cardImage.style.display = 'block';
+                updateNavigationUI();
+            }).catch(() => {
+                spinner.style.display = 'none';
+                showError('Ошибка загрузки изображения');
+            });
             return;
         }
         newIndex++;
