@@ -9,6 +9,11 @@ let currentCard = null;
 let placementType = null; // 'rules' or 'history'
 let navigationContext = null; // { type: 'rules' | 'history', currentIndex: number }
 
+// Helper function to detect desktop (non-touch) devices
+function isDesktop() {
+    return !('ontouchstart' in window || navigator.maxTouchPoints > 0);
+}
+
 // Initialize application
 async function init() {
     // Load language from localStorage
@@ -97,7 +102,10 @@ function setupEventListeners() {
     document.getElementById('nextCardBtn').addEventListener('click', navigateToNextCard);
 
     // Placement dialog actions
-    document.getElementById('confirmPlacement').addEventListener('click', confirmPlacement);
+    document.getElementById('placementForm').addEventListener('submit', (e) => {
+        e.preventDefault();
+        confirmPlacement();
+    });
     document.getElementById('cancelPlacement').addEventListener('click', closePlacementDialog);
 
     // Import/Export
@@ -120,7 +128,6 @@ function setupEventListeners() {
     });
 }
 
-// Switch language
 // Switch language
 function switchLanguage(lang) {
     language = lang;
@@ -183,7 +190,6 @@ function renderCurrentTab() {
 }
 
 // Open card by number
-// Open card by number
 async function openCard() {
     const input = document.getElementById('archiveNumInput');
     const cardNumber = parseInt(input.value);
@@ -197,11 +203,9 @@ async function openCard() {
     openBtn.disabled = true;
     openBtn.textContent = 'Загрузка...';
 
-    const cardPath = `cards/${language}/${cardNumber}.jpg`;
-
-    // Check if image exists and load it
+    // Check if image exists (tries both languages)
     try {
-        const exists = await checkImageExists(cardPath);
+        const exists = await checkImageExists(cardNumber);
         if (!exists) {
             showError(`Карточка №${cardNumber} не найдена`);
             openBtn.disabled = false;
@@ -223,17 +227,27 @@ async function openCard() {
     }
 }
 
-// Check if image exists
-function checkImageExists(path) {
+// Check if image exists (tries current language first, then fallback)
+function checkImageExists(cardNumber, lang) {
     return new Promise((resolve) => {
+        const primaryLang = lang || language;
+        const fallbackLang = primaryLang === 'ru' ? 'en' : 'ru';
+        const primaryPath = `cards/${primaryLang}/${cardNumber}.jpg`;
+        const fallbackPath = `cards/${fallbackLang}/${cardNumber}.jpg`;
+        
         const img = new Image();
         img.onload = () => resolve(true);
-        img.onerror = () => resolve(false);
-        img.src = path;
+        img.onerror = () => {
+            // Try fallback language
+            const fallbackImg = new Image();
+            fallbackImg.onload = () => resolve(true);
+            fallbackImg.onerror = () => resolve(false);
+            fallbackImg.src = fallbackPath;
+        };
+        img.src = primaryPath;
     });
 }
 
-// Show card dialog
 // Show card dialog
 function showCardDialog() {
     const dialog = document.getElementById('cardDialog');
@@ -276,32 +290,40 @@ function showCardDialog() {
     });
 }
 
-// Update card image in dialog
-function updateCardImage() {
-    const img = document.getElementById('cardImage');
-    const cardPath = `cards/${language}/${currentCard}.jpg`;
-    img.src = cardPath;
-}
-
 // Load card image and return promise
 function loadCardImage() {
     return new Promise((resolve, reject) => {
         const img = document.getElementById('cardImage');
-        const cardPath = `cards/${language}/${currentCard}.jpg`;
+        const primaryLang = language;
+        const fallbackLang = language === 'ru' ? 'en' : 'ru';
+        const primaryPath = `cards/${primaryLang}/${currentCard}.jpg`;
+        const fallbackPath = `cards/${fallbackLang}/${currentCard}.jpg`;
         
-        // Create temporary image to preload
+        // Try to load image in primary language
         const tempImg = new Image();
         
         tempImg.onload = () => {
-            img.src = cardPath;
+            img.src = primaryPath;
             resolve();
         };
         
         tempImg.onerror = () => {
-            reject(new Error('Failed to load image'));
+            // Primary language failed, try fallback language
+            const fallbackImg = new Image();
+            
+            fallbackImg.onload = () => {
+                img.src = fallbackPath;
+                resolve();
+            };
+            
+            fallbackImg.onerror = () => {
+                reject(new Error('Failed to load image in both languages'));
+            };
+            
+            fallbackImg.src = fallbackPath;
         };
         
-        tempImg.src = cardPath;
+        tempImg.src = primaryPath;
     });
 }
 
@@ -310,6 +332,13 @@ function closeCardDialog() {
     document.getElementById('cardDialog').close();
     currentCard = null;
     navigationContext = null;
+    
+    // Focus input on desktop only
+    if (isDesktop()) {
+        setTimeout(() => {
+            document.getElementById('archiveNumInput').focus();
+        }, 100);
+    }
 }
 
 // Check if card is placed anywhere
@@ -346,6 +375,13 @@ function showPlacementDialog(type) {
 function closePlacementDialog() {
     document.getElementById('placementDialog').close();
     placementType = null;
+    
+    // Focus input on desktop only
+    if (isDesktop()) {
+        setTimeout(() => {
+            document.getElementById('archiveNumInput').focus();
+        }, 100);
+    }
 }
 
 // Find nearest empty history slot
@@ -504,7 +540,6 @@ function openCardWithNavigation(cardNumber, type, slotNumber) {
 }
 
 // Navigate to previous card in the list
-// Navigate to previous card in the list
 function navigateToPrevCard() {
     if (!navigationContext) return;
     
@@ -537,7 +572,6 @@ function navigateToPrevCard() {
     }
 }
 
-// Navigate to next card in the list
 // Navigate to next card in the list
 function navigateToNextCard() {
     if (!navigationContext) return;

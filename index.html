@@ -64,12 +64,14 @@
                 <span class="nav-info" id="navInfo"></span>
                 <button class="nav-btn" id="nextCardBtn">›</button>
             </div>
+            
             <!-- Loading spinner -->
             <div class="loading-spinner" id="loadingSpinner" style="display: none;">
                 <div class="spinner"></div>
                 <p>Загрузка карточки...</p>
             </div>
-            <img id="cardImage" class="card-image" alt="Card">
+            
+            <img id="cardImage" class="card-image" alt="Card" style="display: none;">
             <div class="dialog-actions" id="dialogActions">
                 <button id="placeInRulesBtn" class="action-btn">Поставить в правило</button>
                 <button id="placeInHistoryBtn" class="action-btn">Поставить в историю</button>
@@ -79,14 +81,14 @@
 
     <!-- Placement dialog for rules -->
     <dialog id="placementDialog" class="placement-dialog">
-        <div class="dialog-content">
+        <form id="placementForm" class="dialog-content">
             <h3 id="placementTitle">Выберите слот</h3>
-            <input type="number" id="slotInput" min="1">
+            <input type="number" id="slotInput" min="1" autocomplete="off">
             <div class="placement-actions">
-                <button id="confirmPlacement" class="action-btn">Подтвердить</button>
-                <button id="cancelPlacement" class="action-btn secondary">Отмена</button>
+                <button type="submit" id="confirmPlacement" class="action-btn">Подтвердить</button>
+                <button type="button" id="cancelPlacement" class="action-btn secondary">Отмена</button>
             </div>
-        </div>
+        </form>
     </dialog>
 
     <script src="app.js"></script>
