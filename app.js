@@ -23,17 +23,49 @@ async function init() {
         updateLanguageButtons();
     }
 
-    // Load state from localStorage or initialState.json
+    // Load initial state from JSON first to check version
+    let initialState;
+    try {
+        const response = await fetch('initialState.json');
+        if (!response.ok) {
+            throw new Error('Failed to load initial state');
+        }
+        initialState = await response.json();
+        console.log("Initial state loaded")
+    } catch (e) {
+        showError('Ошибка загрузки начального состояния');
+        console.error(e);
+        return;
+    }
+
+    // Load state from localStorage or use initial state
     const savedState = localStorage.getItem('state');
     if (savedState) {
         try {
-            state = JSON.parse(savedState);
+            const parsedState = JSON.parse(savedState);
+            
+            // Check version - if initialState has newer version, auto-update
+            const savedVersion = parsedState.version || 0;
+            const initialVersion = initialState.version || 0;
+            
+            if (initialVersion > savedVersion) {
+                // Auto-update to new version
+                state = initialState;
+                saveState();
+                showError(`Правила обновлены до версии ${initialVersion}`, false);
+            } else {
+                // Use saved state
+                state = parsedState;
+            }
         } catch (e) {
             console.error('Error parsing saved state:', e);
-            await loadInitialState();
+            state = initialState;
+            saveState();
         }
     } else {
-        await loadInitialState();
+        // No saved state, use initial
+        state = initialState;
+        saveState();
     }
 
     // Setup event listeners
@@ -114,6 +146,7 @@ function setupEventListeners() {
         document.getElementById('importFile').click();
     });
     document.getElementById('importFile').addEventListener('change', importState);
+    document.getElementById('resetBtn').addEventListener('click', resetToInitial);
 
     // Close dialogs on backdrop click
     document.getElementById('cardDialog').addEventListener('click', (e) => {
@@ -644,6 +677,24 @@ function updateNavigationUI() {
     nextBtn.disabled = !hasNext;
 }
 
+// Reset to initial state
+async function resetToInitial() {
+    const confirmed = confirm('Сбросить все данные до начального состояния? Все изменения будут потеряны.');
+    
+    if (!confirmed) {
+        return;
+    }
+    
+    try {
+        await loadInitialState();
+        renderCurrentTab();
+        showError('Данные сброшены до начального состояния', false);
+    } catch (e) {
+        showError('Ошибка при сбросе данных');
+        console.error(e);
+    }
+}
+
 // Export state
 function exportState() {
     const dataStr = JSON.stringify(state, null, 2);
@@ -689,6 +740,11 @@ async function importState(event) {
 // Validate state structure
 function validateState(importedState) {
     if (!importedState || typeof importedState !== 'object') {
+        return false;
+    }
+
+    // Version is optional but should be a number if present
+    if (importedState.version !== undefined && typeof importedState.version !== 'number') {
         return false;
     }
 
