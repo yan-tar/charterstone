@@ -136,12 +136,34 @@ body {
     background: #e0e0e0;
 }
 
-.reset-btn {
-    flex: 0 0 auto !important;
+.io-controls .reset-btn {
+    flex: 0 0 auto;
     width: 40px;
-    padding: 8px !important;
+    padding: 8px;
     font-size: 18px;
     font-weight: bold;
+}
+
+.version-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex: 0 0 auto;
+}
+
+.version-control label {
+    font-size: 12px;
+    color: #666;
+    white-space: nowrap;
+}
+
+.version-control input {
+    width: 50px;
+    padding: 6px 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 13px;
+    text-align: center;
 }
 
 /* Main content */

@@ -31,7 +31,6 @@ async function init() {
             throw new Error('Failed to load initial state');
         }
         initialState = await response.json();
-        console.log("Initial state loaded")
     } catch (e) {
         showError('Ошибка загрузки начального состояния');
         console.error(e);
@@ -40,18 +39,28 @@ async function init() {
 
     // Load state from localStorage or use initial state
     const savedState = localStorage.getItem('state');
+    const savedCurrentVersion = localStorage.getItem('currentVersion');
+    
     if (savedState) {
         try {
             const parsedState = JSON.parse(savedState);
             
-            // Check version - if initialState has newer version, auto-update
-            const savedVersion = parsedState.version || 0;
-            const initialVersion = initialState.version || 0;
+            // Get current locked version (from localStorage or input)
+            const currentVersion = savedCurrentVersion ? parseInt(savedCurrentVersion) : (initialState.version || 1);
             
-            if (initialVersion > savedVersion) {
+            // Update version input field
+            document.getElementById('versionInput').value = currentVersion;
+            
+            // Check version - if initialState has newer version than current locked version, auto-update
+            const initialVersion = initialState.version || 1;
+            
+            if (initialVersion > currentVersion) {
                 // Auto-update to new version
                 state = initialState;
                 saveState();
+                // Update current version to match
+                localStorage.setItem('currentVersion', initialVersion.toString());
+                document.getElementById('versionInput').value = initialVersion;
                 showError(`Правила обновлены до версии ${initialVersion}`, false);
             } else {
                 // Use saved state
@@ -61,11 +70,17 @@ async function init() {
             console.error('Error parsing saved state:', e);
             state = initialState;
             saveState();
+            const version = initialState.version || 1;
+            localStorage.setItem('currentVersion', version.toString());
+            document.getElementById('versionInput').value = version;
         }
     } else {
         // No saved state, use initial
         state = initialState;
         saveState();
+        const version = initialState.version || 1;
+        localStorage.setItem('currentVersion', version.toString());
+        document.getElementById('versionInput').value = version;
     }
 
     // Setup event listeners
@@ -147,6 +162,13 @@ function setupEventListeners() {
     });
     document.getElementById('importFile').addEventListener('change', importState);
     document.getElementById('resetBtn').addEventListener('click', resetToInitial);
+    
+    // Version control
+    document.getElementById('versionInput').addEventListener('change', (e) => {
+        const version = parseInt(e.target.value) || 1;
+        localStorage.setItem('currentVersion', version.toString());
+        showError(`Версия закреплена: ${version}`, false);
+    });
 
     // Close dialogs on backdrop click
     document.getElementById('cardDialog').addEventListener('click', (e) => {
@@ -687,6 +709,12 @@ async function resetToInitial() {
     
     try {
         await loadInitialState();
+        
+        // Update version input to match initial state version
+        const version = state.version || 1;
+        localStorage.setItem('currentVersion', version.toString());
+        document.getElementById('versionInput').value = version;
+        
         renderCurrentTab();
         showError('Данные сброшены до начального состояния', false);
     } catch (e) {
