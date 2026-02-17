@@ -119,7 +119,7 @@ body {
     display: flex;
     gap: 8px;
     align-items: center;
-    /* display: none; */
+    display: none;
 }
 
 .io-controls button {
