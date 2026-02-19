@@ -778,9 +778,12 @@ function showCrateDialog(crateId, crateContent) {
     const dialog = document.getElementById('crateDialog');
     const title = document.getElementById('crateTitle');
     const content = document.getElementById('crateContent');
+    const notification = document.getElementById('crateNotification');
 
     title.textContent = `Ящик ${crateId}`;
     content.innerHTML = '';
+    notification.style.display = 'none';
+    notification.textContent = '';
 
     // Process story cards first and place them automatically
     if (crateContent.story && crateContent.story.length > 0) {
@@ -793,7 +796,12 @@ function showCrateDialog(crateId, crateContent) {
         });
 
         if (storyCards.length > 0) {
-            placeStoryCards(storyCards);
+            const result = placeStoryCards(storyCards);
+            if (result.message) {
+                notification.textContent = result.message;
+                notification.className = 'crate-notification ' + (result.placed > 0 ? 'success' : 'info');
+                notification.style.display = 'block';
+            }
         }
     }
 
@@ -831,7 +839,7 @@ function showCrateDialog(crateId, crateContent) {
             if (categoryData.note) {
                 const note = document.createElement('span');
                 note.className = 'crate-item-note';
-                note.textContent = `(${categoryData.note})`;
+                note.textContent = ` (${categoryData.note})`;
                 item.appendChild(note);
             }
             itemsList.appendChild(item);
@@ -840,11 +848,27 @@ function showCrateDialog(crateId, crateContent) {
             categoryData.forEach(cardItem => {
                 const item = document.createElement('li');
                 item.className = 'crate-item';
-                item.textContent = `- ${cardItem.value}`;
+                
+                // Show the card value/number
+                const valueText = document.createTextNode(`- ${cardItem.value}`);
+                item.appendChild(valueText);
+                
+                // Check if card is placed somewhere
+                const cardNumber = parseCardValue(cardItem.value);
+                if (cardNumber) {
+                    const placement = findCardPlacement(cardNumber);
+                    if (placement) {
+                        const placedSpan = document.createElement('span');
+                        placedSpan.className = 'crate-item-placed';
+                        placedSpan.textContent = ` [${placement}]`;
+                        item.appendChild(placedSpan);
+                    }
+                }
+                
                 if (cardItem.note) {
                     const note = document.createElement('span');
                     note.className = 'crate-item-note';
-                    note.textContent = `(${cardItem.note})`;
+                    note.textContent = ` (${cardItem.note})`;
                     item.appendChild(note);
                 }
                 itemsList.appendChild(item);
@@ -871,11 +895,36 @@ function parseCardValue(value) {
     return match ? parseInt(match[0]) : null;
 }
 
+// Find where a card is placed
+function findCardPlacement(cardNumber) {
+    // Check in rules
+    const ruleIndex = state.rules.findIndex(r => r.card === cardNumber);
+    if (ruleIndex !== -1) {
+        return `Правило #${state.rules[ruleIndex].ruleNumber}`;
+    }
+    
+    // Check in history
+    const historyIndex = state.history.findIndex(h => h.card === cardNumber);
+    if (historyIndex !== -1) {
+        return `История #${state.history[historyIndex].index}`;
+    }
+    
+    return null;
+}
+
 // Place story cards in history automatically
 function placeStoryCards(cardNumbers) {
     let placedCount = 0;
+    let skippedCount = 0;
     
     cardNumbers.forEach(cardNumber => {
+        // Check if card already exists in history
+        const alreadyInHistory = state.history.some(h => h.card === cardNumber);
+        if (alreadyInHistory) {
+            skippedCount++;
+            return; // Skip this card
+        }
+        
         // Find first empty history slot
         const emptySlot = state.history.find(h => h.card === null);
         if (emptySlot) {
@@ -885,11 +934,33 @@ function placeStoryCards(cardNumbers) {
         }
     });
 
-    if (placedCount > 0) {
+    if (placedCount > 0 || skippedCount > 0) {
         saveState();
-        renderCurrentTab();
-        showError(`Размещено ${placedCount} карт в историю`, false);
+        
+        // Render current tab if we're on History tab
+        const activeTab = document.querySelector('.tab-btn.active');
+        if (activeTab && activeTab.dataset.tab === 'history') {
+            renderHistory();
+        }
+        
+        // Generate notification message
+        let message = '';
+        if (skippedCount > 0 && placedCount > 0) {
+            const skippedWord = skippedCount === 1 ? 'карта уже была размещена' : (skippedCount < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
+            const placedWord = placedCount === 1 ? 'добавлена 1 новая' : (placedCount < 5 ? `добавлены ${placedCount} новые` : `добавлено ${placedCount} новых`);
+            message = `${skippedCount} ${skippedWord}, ${placedWord}`;
+        } else if (skippedCount > 0) {
+            const skippedWord = skippedCount === 1 ? 'карта уже была размещена' : (skippedCount < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
+            message = `${skippedCount} ${skippedWord}`;
+        } else {
+            const cardWord = placedCount === 1 ? 'карта' : (placedCount < 5 ? 'карты' : 'карт');
+            message = `Размещено: ${placedCount} ${cardWord} в историю`;
+        }
+        
+        return { message, placed: placedCount, skipped: skippedCount };
     }
+    
+    return { message: '', placed: 0, skipped: 0 };
 }
 
 // Reset to initial state

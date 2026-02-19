@@ -242,6 +242,7 @@ input::placeholder {
     background: #fafafa;
     cursor: pointer;
     transition: background 0.2s;
+    border-radius: 5px;
 }
 
 .slot:active {
@@ -250,10 +251,10 @@ input::placeholder {
 
 .slot.empty {
     background: #ffffff;
-    border-style: dashed;
+    border: 1px solid lightgray;
     cursor: default;
 }
-.slot.new {
+.slot.new img{
     border: 2px solid #4CAF50;
     box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
 }
@@ -282,6 +283,7 @@ input::placeholder {
 /* Card dialog */
 dialog {
   margin-inline: auto;
+  margin-top: 10px;
 }
 
 .card-dialog {
@@ -476,6 +478,26 @@ dialog {
     border-bottom: 2px solid #333;
 }
 
+.crate-notification {
+    padding: 12px 16px;
+    margin-bottom: 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    text-align: center;
+}
+
+.crate-notification.success {
+    background: #e8f5e9;
+    color: #2e7d32;
+    border: 1px solid #4caf50;
+}
+
+.crate-notification.info {
+    background: #e3f2fd;
+    color: #1565c0;
+    border: 1px solid #2196f3;
+}
+
 .crate-content {
     max-height: 60vh;
     overflow-y: auto;
@@ -518,6 +540,13 @@ dialog {
     color: #666;
     font-size: 12px;
     margin-left: 4px;
+}
+
+.crate-item-placed {
+    color: #4caf50;
+    font-size: 12px;
+    margin-left: 4px;
+    font-weight: 500;
 }
 
 /* Loading state */
@@ -566,7 +595,7 @@ dialog {
     padding: 16px 24px;
     border-radius: 8px;
     font-size: 16px;
-    z-index: 1000;
+    z-index: 10000;
     animation: fadeOut 3s forwards;
 }
 
