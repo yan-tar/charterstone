@@ -643,3 +643,32 @@ dialog {
       max-height: 100vh;
     }
 }
+
+/* Clickable card links in crate dialog */
+.card-link {
+    color: #2196f3;
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.card-link:hover {
+    color: #1565c0;
+}
+
+/* Back-to-crate button in card dialog */
+.back-btn {
+    align-self: flex-start;
+    margin-bottom: 8px;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+    order: 0;
+}
+
+.back-btn:active {
+    background: #e0e0e0;
+}

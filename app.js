@@ -8,6 +8,7 @@ let language = 'ru';
 let currentCard = null;
 let placementType = null; // 'rules' or 'history'
 let navigationContext = null; // { type: 'rules' | 'history', currentIndex: number }
+let navigationStack = null; // { type: 'crate', crateId: string, crateContent: object }
 let cratesData = null; // Loaded crate data
 
 // Category translations and subtitles
@@ -175,6 +176,9 @@ function setupEventListeners() {
     document.getElementById('closeCrateDialog').addEventListener('click', closeCrateDialog);
     document.getElementById('placeInRulesBtn').addEventListener('click', () => showPlacementDialog('rules'));
     document.getElementById('placeInHistoryBtn').addEventListener('click', () => showPlacementDialog('history'));
+
+    // Back to crate button
+    document.getElementById('backToCrateBtn').addEventListener('click', returnToCrate);
 
     // Card navigation buttons
     document.getElementById('prevCardBtn').addEventListener('click', navigateToPrevCard);
@@ -347,14 +351,20 @@ function showCardDialog() {
     const navigation = document.getElementById('cardNavigation');
     const spinner = document.getElementById('loadingSpinner');
     const cardImage = document.getElementById('cardImage');
+    const backBtn = document.getElementById('backToCrateBtn');
     
     // Show spinner, hide image initially
     spinner.style.display = 'flex';
     cardImage.style.display = 'none';
     actions.style.display = 'none';
     
-    // Open dialog first
-    dialog.showModal();
+    // Show/hide back button based on navigation stack
+    backBtn.style.display = navigationStack ? 'block' : 'none';
+
+    // Open dialog first (only if not already open)
+    if (!dialog.open) {
+        dialog.showModal();
+    }
     
     // Load image
     loadCardImage().then(() => {
@@ -370,7 +380,7 @@ function showCardDialog() {
             actions.style.display = 'none';
         } else {
             navigation.style.display = 'none';
-            // When opened directly via input, show action buttons only if card is not placed
+            // When opened directly via input or from crate, show action buttons only if card is not placed
             const isPlaced = isCardPlaced(currentCard);
             actions.style.display = isPlaced ? 'none' : 'flex';
         }
@@ -421,7 +431,15 @@ function loadCardImage() {
 
 // Close card dialog
 function closeCardDialog() {
-    document.getElementById('cardDialog').close();
+    const dialog = document.getElementById('cardDialog');
+    
+    // If opened from crate, return to crate dialog instead of just closing
+    if (navigationStack && navigationStack.type === 'crate') {
+        returnToCrate();
+        return;
+    }
+    
+    dialog.close();
     currentCard = null;
     navigationContext = null;
     
@@ -431,6 +449,44 @@ function closeCardDialog() {
             document.getElementById('archiveNumInput').focus();
         }, 100);
     }
+}
+
+// Open card from crate dialog
+function openCardFromCrate(cardNumber) {
+    // Save crate context
+    const crateDialog = document.getElementById('crateDialog');
+    navigationStack = {
+        type: 'crate',
+        crateId: document.getElementById('crateTitle').textContent.replace('Ящик ', ''),
+        crateContent: cratesData ? cratesData[document.getElementById('crateTitle').textContent.replace('Ящик ', '')] : null
+    };
+
+    // Hide crate dialog (don't close — keep its state)
+    crateDialog.style.display = 'none';
+
+    // Open card dialog without slot navigation
+    currentCard = cardNumber;
+    navigationContext = null;
+    showCardDialog();
+}
+
+// Return to crate dialog from card dialog
+function returnToCrate() {
+    if (!navigationStack || navigationStack.type !== 'crate') return;
+
+    const cardDialog = document.getElementById('cardDialog');
+    const crateDialog = document.getElementById('crateDialog');
+
+    // Close card dialog properly (without triggering closeCardDialog recursion)
+    cardDialog.close();
+    currentCard = null;
+    navigationContext = null;
+
+    // Restore crate dialog visibility
+    crateDialog.style.display = '';
+
+    // Clear stack
+    navigationStack = null;
 }
 
 // Check if card is placed anywhere
@@ -773,6 +829,28 @@ function openCrate() {
     showCrateDialog(crateId, crateContent);
 }
 
+// Parse a range string like "337-342" or "337–342" into array of card numbers
+function parseCardRange(value) {
+    const strValue = String(value).trim();
+    // Match range patterns with both hyphen and en-dash
+    const rangeMatch = strValue.match(/^(\d+)\s*[–-]\s*(\d+)$/);
+    if (rangeMatch) {
+        const start = parseInt(rangeMatch[1]);
+        const end = parseInt(rangeMatch[2]);
+        const numbers = [];
+        for (let i = start; i <= end; i++) {
+            numbers.push(i);
+        }
+        return numbers;
+    }
+    // Single number
+    const singleMatch = strValue.match(/^(\d+)$/);
+    if (singleMatch) {
+        return [parseInt(singleMatch[1])];
+    }
+    return null; // Non-numeric (like "v", "ii")
+}
+
 // Show crate dialog
 function showCrateDialog(crateId, crateContent) {
     const dialog = document.getElementById('crateDialog');
@@ -785,13 +863,16 @@ function showCrateDialog(crateId, crateContent) {
     notification.style.display = 'none';
     notification.textContent = '';
 
+    // Clear navigation stack when opening a new crate
+    navigationStack = null;
+
     // Process story cards first and place them automatically
     if (crateContent.story && crateContent.story.length > 0) {
         const storyCards = [];
         crateContent.story.forEach(item => {
-            const cardValue = parseCardValue(item.value);
-            if (cardValue) {
-                storyCards.push(cardValue);
+            const numbers = parseCardRange(item.value);
+            if (numbers) {
+                numbers.forEach(n => storyCards.push(n));
             }
         });
 
@@ -848,15 +929,32 @@ function showCrateDialog(crateId, crateContent) {
             categoryData.forEach(cardItem => {
                 const item = document.createElement('li');
                 item.className = 'crate-item';
+
+                item.appendChild(document.createTextNode('- '));
+
+                const numbers = parseCardRange(cardItem.value);
+
+                if (numbers && numbers.length > 0) {
+                    // Render each number in the range as a clickable link
+                    numbers.forEach((num, idx) => {
+                        if (idx > 0) {
+                            item.appendChild(document.createTextNode('–'));
+                        }
+                        const link = document.createElement('span');
+                        link.className = 'card-link';
+                        link.textContent = String(num);
+                        link.dataset.card = num;
+                        link.addEventListener('click', () => openCardFromCrate(num));
+                        item.appendChild(link);
+                    });
+                } else {
+                    // Non-numeric value, just show as text
+                    item.appendChild(document.createTextNode(String(cardItem.value)));
+                }
                 
-                // Show the card value/number
-                const valueText = document.createTextNode(`- ${cardItem.value}`);
-                item.appendChild(valueText);
-                
-                // Check if card is placed somewhere
-                const cardNumber = parseCardValue(cardItem.value);
-                if (cardNumber) {
-                    const placement = findCardPlacement(cardNumber);
+                // Show placement info for single cards or first card of range
+                if (numbers && numbers.length > 0) {
+                    const placement = findCardPlacement(numbers[0]);
                     if (placement) {
                         const placedSpan = document.createElement('span');
                         placedSpan.className = 'crate-item-placed';
@@ -884,10 +982,14 @@ function showCrateDialog(crateId, crateContent) {
 
 // Close crate dialog
 function closeCrateDialog() {
+    // Clear navigation stack when crate dialog is explicitly closed
+    navigationStack = null;
     document.getElementById('crateDialog').close();
+    // Restore display in case it was hidden for card preview
+    document.getElementById('crateDialog').style.display = '';
 }
 
-// Parse card value (handles single numbers and ranges)
+// Parse card value (handles single numbers and ranges) — returns first number
 function parseCardValue(value) {
     const strValue = String(value);
     // For now, return first number if it's a range, or the number itself
