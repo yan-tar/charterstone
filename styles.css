@@ -35,6 +35,10 @@ body {
     gap: 12px;
 }
 
+input::placeholder {
+    margin-inline: -3px;
+}
+
 .card-input-group {
     display: flex;
     gap: 8px;
@@ -62,6 +66,42 @@ body {
 }
 
 .card-input-group button:active {
+    background: #555;
+}
+
+
+/* Crate input group */
+.crate-input-group {
+    display: flex;
+    gap: 8px;
+    flex: 0 0 auto;
+}
+
+.crate-input-group input {
+    width: 60px;
+    padding: 10px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 16px;
+    text-align: center;
+    text-transform: uppercase;
+}
+
+.crate-input-group input::placeholder {
+  text-transform: capitalize;
+}
+
+.crate-input-group button {
+    padding: 10px 16px;
+    background: #333;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    font-size: 18px;
+    cursor: pointer;
+}
+
+.crate-input-group button:active {
     background: #555;
 }
 
@@ -106,6 +146,7 @@ body {
     color: black;
     font-weight: 400;
     line-height: 1;
+    text-align: center;
 }
 
 .tab-btn.active {
@@ -239,6 +280,10 @@ body {
 }
 
 /* Card dialog */
+dialog {
+  margin-inline: auto;
+}
+
 .card-dialog {
     border: none;
     border-radius: 8px;
@@ -246,7 +291,6 @@ body {
     max-width: 90vw;
     max-height: 90vh;
     background: #fff;
-    margin-inline: auto;
 }
 
 .card-dialog::backdrop {
@@ -404,6 +448,76 @@ body {
 
 .placement-actions button {
     flex: 1;
+}
+
+/* Crate dialog */
+.crate-dialog {
+    border: none;
+    border-radius: 8px;
+    padding: 0;
+    max-width: 500px;
+    width: 90vw;
+}
+
+.crate-dialog::backdrop {
+    background: rgba(0, 0, 0, 0.7);
+}
+
+.crate-dialog .dialog-content {
+    padding: 24px;
+}
+
+.crate-dialog h2 {
+    font-size: 20px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    text-align: center;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #333;
+}
+
+.crate-content {
+    max-height: 60vh;
+    overflow-y: auto;
+}
+
+.crate-category {
+    margin-bottom: 20px;
+}
+
+.crate-category:last-child {
+    margin-bottom: 0;
+}
+
+.crate-category-title {
+    font-size: 14px;
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 8px;
+    text-transform: uppercase;
+}
+
+.crate-category-subtitle {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.crate-items {
+    list-style: none;
+    padding-left: 0;
+}
+
+.crate-item {
+    padding: 4px 0;
+    font-size: 14px;
+    color: #333;
+}
+
+.crate-item-note {
+    color: #666;
+    font-size: 12px;
+    margin-left: 4px;
 }
 
 /* Loading state */

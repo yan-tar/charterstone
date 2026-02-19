@@ -8,6 +8,17 @@ let language = 'ru';
 let currentCard = null;
 let placementType = null; // 'rules' or 'history'
 let navigationContext = null; // { type: 'rules' | 'history', currentIndex: number }
+let cratesData = null; // Loaded crate data
+
+// Category translations and subtitles
+const categoryInfo = {
+    story: { title: 'ИСТОРИЯ', subtitle: 'прочитать первым' },
+    rules: { title: 'ПРАВИЛА', subtitle: 'прочитать после истории (если есть)' },
+    various: { title: 'РАЗНОЕ', subtitle: 'см. инструкции' },
+    gain: { title: 'ПОЛУЧИТЬ', subtitle: 'получает игрок, открывший ящик' },
+    general_supply: { title: 'ОБЩИЙ ЗАПАС', subtitle: '' },
+    tuckbox: { title: 'КОРОБКА', subtitle: 'для iv, извлечь только один тип жетонов' }
+};
 
 // Helper function to detect desktop (non-touch) devices
 function isDesktop() {
@@ -21,6 +32,16 @@ async function init() {
     if (savedLanguage) {
         language = savedLanguage;
         updateLanguageButtons();
+    }
+
+    // Load crates data
+    try {
+        const response = await fetch('crates.json');
+        if (response.ok) {
+            cratesData = await response.json();
+        }
+    } catch (e) {
+        console.error('Error loading crates data:', e);
     }
 
     // Load initial state from JSON first to check version
@@ -127,6 +148,16 @@ function setupEventListeners() {
         }
     });
 
+    // Open crate button
+    document.getElementById('openCrateBtn').addEventListener('click', openCrate);
+    
+    // Enter key on crate input
+    document.getElementById('crateInput').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            openCrate();
+        }
+    });
+
     // Language toggle
     document.getElementById('langRu').addEventListener('click', () => switchLanguage('ru'));
     document.getElementById('langEn').addEventListener('click', () => switchLanguage('en'));
@@ -141,6 +172,7 @@ function setupEventListeners() {
 
     // Dialog actions
     document.getElementById('closeDialog').addEventListener('click', closeCardDialog);
+    document.getElementById('closeCrateDialog').addEventListener('click', closeCrateDialog);
     document.getElementById('placeInRulesBtn').addEventListener('click', () => showPlacementDialog('rules'));
     document.getElementById('placeInHistoryBtn').addEventListener('click', () => showPlacementDialog('history'));
 
@@ -179,6 +211,11 @@ function setupEventListeners() {
     document.getElementById('placementDialog').addEventListener('click', (e) => {
         if (e.target === e.currentTarget) {
             closePlacementDialog();
+        }
+    });
+    document.getElementById('crateDialog').addEventListener('click', (e) => {
+        if (e.target === e.currentTarget) {
+            closeCrateDialog();
         }
     });
 }
@@ -710,6 +747,149 @@ function updateNavigationUI() {
     
     prevBtn.disabled = !hasPrev;
     nextBtn.disabled = !hasNext;
+}
+
+// Open crate
+function openCrate() {
+    const input = document.getElementById('crateInput');
+    const crateId = input.value.trim().toUpperCase();
+
+    if (!crateId) {
+        showError('Введите номер ящика');
+        return;
+    }
+
+    if (!cratesData) {
+        showError('Данные ящиков не загружены');
+        return;
+    }
+
+    const crateContent = cratesData[crateId];
+    if (!crateContent) {
+        showError('Ящик не найден');
+        return;
+    }
+
+    showCrateDialog(crateId, crateContent);
+}
+
+// Show crate dialog
+function showCrateDialog(crateId, crateContent) {
+    const dialog = document.getElementById('crateDialog');
+    const title = document.getElementById('crateTitle');
+    const content = document.getElementById('crateContent');
+
+    title.textContent = `Ящик ${crateId}`;
+    content.innerHTML = '';
+
+    // Process story cards first and place them automatically
+    if (crateContent.story && crateContent.story.length > 0) {
+        const storyCards = [];
+        crateContent.story.forEach(item => {
+            const cardValue = parseCardValue(item.value);
+            if (cardValue) {
+                storyCards.push(cardValue);
+            }
+        });
+
+        if (storyCards.length > 0) {
+            placeStoryCards(storyCards);
+        }
+    }
+
+    // Render all categories
+    const categoryOrder = ['story', 'rules', 'various', 'gain', 'general_supply', 'tuckbox'];
+    
+    categoryOrder.forEach(categoryKey => {
+        const categoryData = crateContent[categoryKey];
+        if (!categoryData) return; // Skip empty categories
+
+        const categoryDiv = document.createElement('div');
+        categoryDiv.className = 'crate-category';
+
+        const info = categoryInfo[categoryKey];
+        const titleDiv = document.createElement('div');
+        titleDiv.className = 'crate-category-title';
+        titleDiv.textContent = info.title;
+        categoryDiv.appendChild(titleDiv);
+
+        if (info.subtitle) {
+            const subtitleDiv = document.createElement('div');
+            subtitleDiv.className = 'crate-category-subtitle';
+            subtitleDiv.textContent = `(${info.subtitle})`;
+            categoryDiv.appendChild(subtitleDiv);
+        }
+
+        const itemsList = document.createElement('ul');
+        itemsList.className = 'crate-items';
+
+        // Handle tuckbox separately (it's an object, not an array)
+        if (categoryKey === 'tuckbox') {
+            const item = document.createElement('li');
+            item.className = 'crate-item';
+            item.textContent = `- ${categoryData.value}`;
+            if (categoryData.note) {
+                const note = document.createElement('span');
+                note.className = 'crate-item-note';
+                note.textContent = `(${categoryData.note})`;
+                item.appendChild(note);
+            }
+            itemsList.appendChild(item);
+        } else {
+            // Process array items
+            categoryData.forEach(cardItem => {
+                const item = document.createElement('li');
+                item.className = 'crate-item';
+                item.textContent = `- ${cardItem.value}`;
+                if (cardItem.note) {
+                    const note = document.createElement('span');
+                    note.className = 'crate-item-note';
+                    note.textContent = `(${cardItem.note})`;
+                    item.appendChild(note);
+                }
+                itemsList.appendChild(item);
+            });
+        }
+
+        categoryDiv.appendChild(itemsList);
+        content.appendChild(categoryDiv);
+    });
+
+    dialog.showModal();
+}
+
+// Close crate dialog
+function closeCrateDialog() {
+    document.getElementById('crateDialog').close();
+}
+
+// Parse card value (handles single numbers and ranges)
+function parseCardValue(value) {
+    const strValue = String(value);
+    // For now, return first number if it's a range, or the number itself
+    const match = strValue.match(/\d+/);
+    return match ? parseInt(match[0]) : null;
+}
+
+// Place story cards in history automatically
+function placeStoryCards(cardNumbers) {
+    let placedCount = 0;
+    
+    cardNumbers.forEach(cardNumber => {
+        // Find first empty history slot
+        const emptySlot = state.history.find(h => h.card === null);
+        if (emptySlot) {
+            emptySlot.card = cardNumber;
+            emptySlot.new = true;
+            placedCount++;
+        }
+    });
+
+    if (placedCount > 0) {
+        saveState();
+        renderCurrentTab();
+        showError(`Размещено ${placedCount} карт в историю`, false);
+    }
 }
 
 // Reset to initial state

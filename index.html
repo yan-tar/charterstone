@@ -16,6 +16,10 @@
                 <input type="number" id="archiveNumInput" placeholder="№ карты" min="1" autocomplete="off">
                 <button id="openCardBtn">Открыть</button>
             </div>
+            <div class="crate-input-group">
+                <input type="text" id="crateInput" placeholder="Ящик" maxlength="4" autocomplete="off">
+                <button id="openCrateBtn">📦</button>
+            </div>
             <div class="language-toggle">
                 <button id="langRu" class="lang-btn active">RU</button>
                 <button id="langEn" class="lang-btn">EN</button>
@@ -26,7 +30,6 @@
         <nav class="tabs">
             <button class="tab-btn active" data-tab="rules">Правила</button>
             <button class="tab-btn" data-tab="history">История</button>
-            <a class="tab-btn" href="index.pdf">Индекс</a>
             <a class="tab-btn" href="automa.pdf">Автома</a>
         </nav>
         
@@ -94,6 +97,15 @@
                 <button type="button" id="cancelPlacement" class="action-btn secondary">Отмена</button>
             </div>
         </form>
+    </dialog>
+
+    <!-- Crate dialog -->
+    <dialog id="crateDialog" class="crate-dialog">
+        <div class="dialog-content">
+            <button class="close-btn" id="closeCrateDialog">&times;</button>
+            <h2 id="crateTitle">Ящик</h2>
+            <div id="crateContent" class="crate-content"></div>
+        </div>
     </dialog>
 
     <script src="app.js"></script>
