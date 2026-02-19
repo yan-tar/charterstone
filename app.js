@@ -1,125 +1,107 @@
 // Application state
 let state = {
     rules: [],
-    history: []
+    history: [],
+    minions: [] // Dynamic list: [{ card: 227, new: true }, ...]
 };
 
 let language = 'ru';
 let currentCard = null;
-let placementType = null; // 'rules' or 'history'
-let navigationContext = null; // { type: 'rules' | 'history', currentIndex: number }
-let navigationStack = null; // { type: 'crate', crateId: string, crateContent: object }
-let cratesData = null; // Loaded crate data
+let placementType = null; // 'rules' | 'history'
+let navigationContext = null; // { type: 'rule' | 'history' | 'minion', currentIndex: number }
+let navigationStack = null;   // { type: 'crate', crateId: string }
+let cratesData = null;
 
-// Category translations and subtitles
 const categoryInfo = {
-    story: { title: 'ИСТОРИЯ', subtitle: 'прочитать первым' },
-    rules: { title: 'ПРАВИЛА', subtitle: 'прочитать после истории (если есть)' },
-    various: { title: 'РАЗНОЕ', subtitle: 'см. инструкции' },
-    gain: { title: 'ПОЛУЧИТЬ', subtitle: 'получает игрок, открывший ящик' },
-    general_supply: { title: 'ОБЩИЙ ЗАПАС', subtitle: '' },
-    tuckbox: { title: 'КОРОБКА', subtitle: 'для iv, извлечь только один тип жетонов' }
+    story:          { title: 'ИСТОРИЯ',      subtitle: 'прочитать первым' },
+    rules:          { title: 'ПРАВИЛА',       subtitle: 'прочитать после истории (если есть)' },
+    various:        { title: 'РАЗНОЕ',        subtitle: 'см. инструкции' },
+    gain:           { title: 'ПОЛУЧИТЬ',      subtitle: 'получает игрок, открывший ящик' },
+    general_supply: { title: 'ОБЩИЙ ЗАПАС',   subtitle: '' },
+    tuckbox:        { title: 'КОРОБКА',       subtitle: 'для iv, извлечь только один тип жетонов' }
 };
 
-// Helper function to detect desktop (non-touch) devices
 function isDesktop() {
     return !('ontouchstart' in window || navigator.maxTouchPoints > 0);
 }
 
-// Initialize application
+// ─── INIT ─────────────────────────────────────────────────────────────────────
+
 async function init() {
-    // Load language from localStorage
     const savedLanguage = localStorage.getItem('language');
-    if (savedLanguage) {
-        language = savedLanguage;
-        updateLanguageButtons();
-    }
+    if (savedLanguage) { language = savedLanguage; updateLanguageButtons(); }
 
-    // Load crates data
     try {
-        const response = await fetch('crates.json');
-        if (response.ok) {
-            cratesData = await response.json();
-        }
-    } catch (e) {
-        console.error('Error loading crates data:', e);
-    }
+        const r = await fetch('crates.json');
+        if (r.ok) cratesData = await r.json();
+    } catch (e) { console.error('Error loading crates data:', e); }
 
-    // Load initial state from JSON first to check version
     let initialState;
     try {
-        const response = await fetch('initialState.json');
-        if (!response.ok) {
-            throw new Error('Failed to load initial state');
-        }
-        initialState = await response.json();
+        const r = await fetch('initialState.json');
+        if (!r.ok) throw new Error('Failed to load initial state');
+        initialState = await r.json();
     } catch (e) {
         showError('Ошибка загрузки начального состояния');
         console.error(e);
         return;
     }
 
-    // Load state from localStorage or use initial state
-    const savedState = localStorage.getItem('state');
+    const savedState          = localStorage.getItem('state');
     const savedCurrentVersion = localStorage.getItem('currentVersion');
-    
+
     if (savedState) {
         try {
-            const parsedState = JSON.parse(savedState);
-            
-            // Get current locked version (from localStorage or input)
-            const currentVersion = savedCurrentVersion ? parseInt(savedCurrentVersion) : (initialState.version || 1);
-            
-            // Update version input field
+            const parsed         = JSON.parse(savedState);
+            const currentVersion = savedCurrentVersion
+                ? parseInt(savedCurrentVersion)
+                : (initialState.version || 1);
+
             document.getElementById('versionInput').value = currentVersion;
-            
-            // Check version - if initialState has newer version than current locked version, auto-update
+
             const initialVersion = initialState.version || 1;
-            
             if (initialVersion > currentVersion) {
-                // Auto-update to new version
-                state = initialState;
+                // Auto-update but preserve minions from old save
+                state          = { ...initialState };
+                state.minions  = Array.isArray(parsed.minions) ? parsed.minions : [];
                 saveState();
-                // Update current version to match
                 localStorage.setItem('currentVersion', initialVersion.toString());
                 document.getElementById('versionInput').value = initialVersion;
                 showError(`Правила обновлены до версии ${initialVersion}`, false);
             } else {
-                // Use saved state
-                state = parsedState;
+                state = parsed;
+                if (!state.minions) state.minions = [];
             }
         } catch (e) {
             console.error('Error parsing saved state:', e);
-            state = initialState;
+            state         = initialState;
+            state.minions = [];
             saveState();
             const version = initialState.version || 1;
             localStorage.setItem('currentVersion', version.toString());
             document.getElementById('versionInput').value = version;
         }
     } else {
-        // No saved state, use initial
-        state = initialState;
+        state         = initialState;
+        state.minions = [];
         saveState();
         const version = initialState.version || 1;
         localStorage.setItem('currentVersion', version.toString());
         document.getElementById('versionInput').value = version;
     }
 
-    // Setup event listeners
     setupEventListeners();
-
-    // Render initial UI
     renderCurrentTab();
 }
 
-// Load initial state from JSON
 async function loadInitialState() {
     try {
-        const response = await fetch('initialState.json');
-        if (!response.ok) {
-            throw new Error('Failed to load initial state');
-        }
-        state = await response.json();
+        const r = await fetch('initialState.json');
+        if (!r.ok) throw new Error('Failed to load initial state');
+        const loaded       = await r.json();
+        const savedMinions = state.minions || []; // preserve minions on reset
+        state              = loaded;
+        state.minions      = savedMinions;
         saveState();
     } catch (e) {
         showError('Ошибка загрузки начального состояния');
@@ -127,146 +109,98 @@ async function loadInitialState() {
     }
 }
 
-// Save state to localStorage
-function saveState() {
-    localStorage.setItem('state', JSON.stringify(state));
-}
+function saveState()    { localStorage.setItem('state',    JSON.stringify(state)); }
+function saveLanguage() { localStorage.setItem('language', language); }
 
-// Save language to localStorage
-function saveLanguage() {
-    localStorage.setItem('language', language);
-}
+// ─── EVENTS ───────────────────────────────────────────────────────────────────
 
-// Setup all event listeners
 function setupEventListeners() {
-    // Open card button
     document.getElementById('openCardBtn').addEventListener('click', openCard);
-    
-    // Enter key on card input
-    document.getElementById('archiveNumInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            openCard();
-        }
+    document.getElementById('archiveNumInput').addEventListener('keypress', e => {
+        if (e.key === 'Enter') openCard();
     });
 
-    // Open crate button
     document.getElementById('openCrateBtn').addEventListener('click', openCrate);
-    
-    // Enter key on crate input
-    document.getElementById('crateInput').addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
-            openCrate();
-        }
+    document.getElementById('crateInput').addEventListener('keypress', e => {
+        if (e.key === 'Enter') openCrate();
     });
 
-    // Language toggle
     document.getElementById('langRu').addEventListener('click', () => switchLanguage('ru'));
     document.getElementById('langEn').addEventListener('click', () => switchLanguage('en'));
 
-    // Tab navigation
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const tabName = btn.dataset.tab;
-            switchTab(tabName);
-        });
-    });
+    document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.addEventListener('click', () => switchTab(btn.dataset.tab))
+    );
 
-    // Dialog actions
     document.getElementById('closeDialog').addEventListener('click', closeCardDialog);
     document.getElementById('closeCrateDialog').addEventListener('click', closeCrateDialog);
     document.getElementById('placeInRulesBtn').addEventListener('click', () => showPlacementDialog('rules'));
     document.getElementById('placeInHistoryBtn').addEventListener('click', () => showPlacementDialog('history'));
-
-    // Back to crate button
+    document.getElementById('placeInMinionsBtn').addEventListener('click', placeInMinions);
     document.getElementById('backToCrateBtn').addEventListener('click', returnToCrate);
-
-    // Card navigation buttons
     document.getElementById('prevCardBtn').addEventListener('click', navigateToPrevCard);
     document.getElementById('nextCardBtn').addEventListener('click', navigateToNextCard);
 
-    // Placement dialog actions
-    document.getElementById('placementForm').addEventListener('submit', (e) => {
-        e.preventDefault();
-        confirmPlacement();
+    document.getElementById('placementForm').addEventListener('submit', e => {
+        e.preventDefault(); confirmPlacement();
     });
     document.getElementById('cancelPlacement').addEventListener('click', closePlacementDialog);
 
-    // Import/Export
     document.getElementById('exportBtn').addEventListener('click', exportState);
-    document.getElementById('importBtn').addEventListener('click', () => {
-        document.getElementById('importFile').click();
-    });
+    document.getElementById('importBtn').addEventListener('click', () =>
+        document.getElementById('importFile').click()
+    );
     document.getElementById('importFile').addEventListener('change', importState);
     document.getElementById('resetBtn').addEventListener('click', resetToInitial);
-    
-    // Version control
-    document.getElementById('versionInput').addEventListener('change', (e) => {
+
+    document.getElementById('versionInput').addEventListener('change', e => {
         const version = parseInt(e.target.value) || 1;
         localStorage.setItem('currentVersion', version.toString());
         showError(`Версия закреплена: ${version}`, false);
     });
 
-    // Close dialogs on backdrop click
-    document.getElementById('cardDialog').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-            closeCardDialog();
-        }
+    document.getElementById('cardDialog').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeCardDialog();
     });
-    document.getElementById('placementDialog').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-            closePlacementDialog();
-        }
+    document.getElementById('placementDialog').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closePlacementDialog();
     });
-    document.getElementById('crateDialog').addEventListener('click', (e) => {
-        if (e.target === e.currentTarget) {
-            closeCrateDialog();
-        }
+    document.getElementById('crateDialog').addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeCrateDialog();
     });
 }
 
-// Switch language
+// ─── LANGUAGE ─────────────────────────────────────────────────────────────────
+
 function switchLanguage(lang) {
     language = lang;
     saveLanguage();
     updateLanguageButtons();
     renderCurrentTab();
-    
-    // Update card image if dialog is open
+
     if (currentCard !== null && document.getElementById('cardDialog').open) {
-        const spinner = document.getElementById('loadingSpinner');
+        const spinner   = document.getElementById('loadingSpinner');
         const cardImage = document.getElementById('cardImage');
-        
-        // Show spinner while loading new language image
-        spinner.style.display = 'flex';
+        spinner.style.display   = 'flex';
         cardImage.style.display = 'none';
-        
-        loadCardImage().then(() => {
-            spinner.style.display = 'none';
-            cardImage.style.display = 'block';
-        }).catch(() => {
-            spinner.style.display = 'none';
-            showError('Ошибка загрузки изображения');
-        });
+        loadCardImage()
+            .then(() => { spinner.style.display = 'none'; cardImage.style.display = 'block'; })
+            .catch(() => { spinner.style.display = 'none'; showError('Ошибка загрузки изображения'); });
     }
 }
 
-// Update language button states
 function updateLanguageButtons() {
     document.getElementById('langRu').classList.toggle('active', language === 'ru');
     document.getElementById('langEn').classList.toggle('active', language === 'en');
 }
 
-// Switch tab
-function switchTab(tabName) {
-    // Update tab buttons
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tab === tabName);
-    });
+// ─── TABS ─────────────────────────────────────────────────────────────────────
 
-    // Update tab content
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-btn').forEach(btn =>
+        btn.classList.toggle('active', btn.dataset.tab === tabName)
+    );
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
 
     if (tabName === 'rules') {
         document.getElementById('rulesTab').classList.add('active');
@@ -274,234 +208,166 @@ function switchTab(tabName) {
     } else if (tabName === 'history') {
         document.getElementById('historyTab').classList.add('active');
         renderHistory();
+        renderMinions();
     }
 }
 
-// Render current active tab
 function renderCurrentTab() {
-    const activeTab = document.querySelector('.tab-btn.active');
-    if (activeTab) {
-        switchTab(activeTab.dataset.tab);
-    }
+    const active = document.querySelector('.tab-btn.active');
+    if (active) switchTab(active.dataset.tab);
 }
 
-// Open card by number
-async function openCard() {
-    const input = document.getElementById('archiveNumInput');
-    const cardNumber = parseInt(input.value);
+// ─── OPEN CARD ────────────────────────────────────────────────────────────────
 
+async function openCard() {
+    const input      = document.getElementById('archiveNumInput');
+    const cardNumber = parseInt(input.value);
     if (!cardNumber || cardNumber < 1) {
-        showError('Введите корректный номер карточки');
-        return;
+        showError('Введите корректный номер карточки'); return;
     }
 
-    const openBtn = document.getElementById('openCardBtn');
-    openBtn.disabled = true;
-    openBtn.textContent = 'Загрузка...';
+    const openBtn        = document.getElementById('openCardBtn');
+    openBtn.disabled     = true;
+    openBtn.textContent  = 'Загрузка...';
 
-    // Check if image exists (tries both languages)
     try {
         const exists = await checkImageExists(cardNumber);
         if (!exists) {
             showError(`Карточка №${cardNumber} не найдена`);
-            openBtn.disabled = false;
+            openBtn.disabled    = false;
             openBtn.textContent = 'Открыть';
             return;
         }
-
-        currentCard = cardNumber;
-        navigationContext = null; // No navigation when opening directly
+        currentCard     = cardNumber;
+        navigationContext = null;
         showCardDialog();
-        
-        openBtn.disabled = false;
+        openBtn.disabled    = false;
         openBtn.textContent = 'Открыть';
     } catch (e) {
         showError('Ошибка при загрузке карточки');
         console.error(e);
-        openBtn.disabled = false;
+        openBtn.disabled    = false;
         openBtn.textContent = 'Открыть';
     }
 }
 
-// Check if image exists (tries current language first, then fallback)
 function checkImageExists(cardNumber, lang) {
-    return new Promise((resolve) => {
-        const primaryLang = lang || language;
-        const fallbackLang = primaryLang === 'ru' ? 'en' : 'ru';
-        const primaryPath = `cards/${primaryLang}/${cardNumber}.jpg`;
-        const fallbackPath = `cards/${fallbackLang}/${cardNumber}.jpg`;
-        
-        const img = new Image();
-        img.onload = () => resolve(true);
+    return new Promise(resolve => {
+        const pLang = lang || language;
+        const fLang = pLang === 'ru' ? 'en' : 'ru';
+        const img   = new Image();
+        img.onload  = () => resolve(true);
         img.onerror = () => {
-            // Try fallback language
-            const fallbackImg = new Image();
-            fallbackImg.onload = () => resolve(true);
-            fallbackImg.onerror = () => resolve(false);
-            fallbackImg.src = fallbackPath;
+            const fb    = new Image();
+            fb.onload  = () => resolve(true);
+            fb.onerror = () => resolve(false);
+            fb.src = `cards/${fLang}/${cardNumber}.jpg`;
         };
-        img.src = primaryPath;
+        img.src = `cards/${pLang}/${cardNumber}.jpg`;
     });
 }
 
-// Show card dialog
-function showCardDialog() {
-    const dialog = document.getElementById('cardDialog');
-    const actions = document.getElementById('dialogActions');
-    const navigation = document.getElementById('cardNavigation');
-    const spinner = document.getElementById('loadingSpinner');
-    const cardImage = document.getElementById('cardImage');
-    const backBtn = document.getElementById('backToCrateBtn');
-    
-    // Show spinner, hide image initially
-    spinner.style.display = 'flex';
-    cardImage.style.display = 'none';
-    actions.style.display = 'none';
-    
-    // Show/hide back button based on navigation stack
-    backBtn.style.display = navigationStack ? 'block' : 'none';
+// ─── CARD DIALOG ──────────────────────────────────────────────────────────────
 
-    // Open dialog first (only if not already open)
-    if (!dialog.open) {
-        dialog.showModal();
-    }
-    
-    // Load image
+function showCardDialog() {
+    const dialog    = document.getElementById('cardDialog');
+    const actions   = document.getElementById('dialogActions');
+    const nav       = document.getElementById('cardNavigation');
+    const spinner   = document.getElementById('loadingSpinner');
+    const cardImage = document.getElementById('cardImage');
+    const backBtn   = document.getElementById('backToCrateBtn');
+
+    spinner.style.display   = 'flex';
+    cardImage.style.display = 'none';
+    actions.style.display   = 'none';
+    backBtn.style.display   = navigationStack ? 'block' : 'none';
+
+    if (!dialog.open) dialog.showModal();
+
     loadCardImage().then(() => {
-        // Hide spinner, show image
-        spinner.style.display = 'none';
+        spinner.style.display   = 'none';
         cardImage.style.display = 'block';
-        
-        // Show/hide navigation based on context
+
         if (navigationContext) {
-            navigation.style.display = 'flex';
+            nav.style.display = 'flex';
             updateNavigationUI();
-            // When viewing from list, never show action buttons (card is already placed)
             actions.style.display = 'none';
         } else {
-            navigation.style.display = 'none';
-            // When opened directly via input or from crate, show action buttons only if card is not placed
-            const isPlaced = isCardPlaced(currentCard);
-            actions.style.display = isPlaced ? 'none' : 'flex';
+            nav.style.display = 'none';
+            if (!isCardPlaced(currentCard)) {
+                actions.style.display = 'flex';
+            }
         }
-    }).catch((error) => {
-        // Hide spinner and show error
+    }).catch(() => {
         spinner.style.display = 'none';
         showError('Ошибка загрузки изображения');
         closeCardDialog();
     });
 }
 
-// Load card image and return promise
 function loadCardImage() {
     return new Promise((resolve, reject) => {
-        const img = document.getElementById('cardImage');
-        const primaryLang = language;
-        const fallbackLang = language === 'ru' ? 'en' : 'ru';
-        const primaryPath = `cards/${primaryLang}/${currentCard}.jpg`;
-        const fallbackPath = `cards/${fallbackLang}/${currentCard}.jpg`;
-        
-        // Try to load image in primary language
-        const tempImg = new Image();
-        
-        tempImg.onload = () => {
-            img.src = primaryPath;
-            resolve();
+        const img   = document.getElementById('cardImage');
+        const fLang = language === 'ru' ? 'en' : 'ru';
+        const pPath = `cards/${language}/${currentCard}.jpg`;
+        const fPath = `cards/${fLang}/${currentCard}.jpg`;
+
+        const temp    = new Image();
+        temp.onload  = () => { img.src = pPath; resolve(); };
+        temp.onerror = () => {
+            const fb    = new Image();
+            fb.onload  = () => { img.src = fPath; resolve(); };
+            fb.onerror = () => reject(new Error('Failed to load image in both languages'));
+            fb.src = fPath;
         };
-        
-        tempImg.onerror = () => {
-            // Primary language failed, try fallback language
-            const fallbackImg = new Image();
-            
-            fallbackImg.onload = () => {
-                img.src = fallbackPath;
-                resolve();
-            };
-            
-            fallbackImg.onerror = () => {
-                reject(new Error('Failed to load image in both languages'));
-            };
-            
-            fallbackImg.src = fallbackPath;
-        };
-        
-        tempImg.src = primaryPath;
+        temp.src = pPath;
     });
 }
 
-// Close card dialog
 function closeCardDialog() {
-    const dialog = document.getElementById('cardDialog');
-    
-    // If opened from crate, return to crate dialog instead of just closing
     if (navigationStack && navigationStack.type === 'crate') {
-        returnToCrate();
-        return;
+        returnToCrate(); return;
     }
-    
-    dialog.close();
-    currentCard = null;
+    document.getElementById('cardDialog').close();
+    currentCard       = null;
     navigationContext = null;
-    
-    // Focus input on desktop only
-    if (isDesktop()) {
-        setTimeout(() => {
-            document.getElementById('archiveNumInput').focus();
-        }, 100);
-    }
+    if (isDesktop()) setTimeout(() => document.getElementById('archiveNumInput').focus(), 100);
 }
 
-// Open card from crate dialog
+// ─── CRATE ↔ CARD ─────────────────────────────────────────────────────────────
+
 function openCardFromCrate(cardNumber) {
-    // Save crate context
-    const crateDialog = document.getElementById('crateDialog');
     navigationStack = {
-        type: 'crate',
-        crateId: document.getElementById('crateTitle').textContent.replace('Ящик ', ''),
-        crateContent: cratesData ? cratesData[document.getElementById('crateTitle').textContent.replace('Ящик ', '')] : null
+        type:    'crate',
+        crateId: document.getElementById('crateTitle').textContent.replace('Ящик ', '')
     };
-
-    // Hide crate dialog (don't close — keep its state)
-    crateDialog.style.display = 'none';
-
-    // Open card dialog without slot navigation
-    currentCard = cardNumber;
+    document.getElementById('crateDialog').style.display = 'none';
+    currentCard       = cardNumber;
     navigationContext = null;
     showCardDialog();
 }
 
-// Return to crate dialog from card dialog
 function returnToCrate() {
     if (!navigationStack || navigationStack.type !== 'crate') return;
-
-    const cardDialog = document.getElementById('cardDialog');
-    const crateDialog = document.getElementById('crateDialog');
-
-    // Close card dialog properly (without triggering closeCardDialog recursion)
-    cardDialog.close();
-    currentCard = null;
+    document.getElementById('cardDialog').close();
+    currentCard       = null;
     navigationContext = null;
-
-    // Restore crate dialog visibility
-    crateDialog.style.display = '';
-
-    // Clear stack
-    navigationStack = null;
+    document.getElementById('crateDialog').style.display = '';
+    navigationStack   = null;
 }
 
-// Check if card is placed anywhere
+// ─── PLACEMENT ────────────────────────────────────────────────────────────────
+
 function isCardPlaced(cardNumber) {
-    const inRules = state.rules.some(rule => rule.card === cardNumber);
-    const inHistory = state.history.some(item => item.card === cardNumber);
-    return inRules || inHistory;
+    return state.rules.some(r => r.card === cardNumber)
+        || state.history.some(h => h.card === cardNumber)
+        || state.minions.some(m => m.card === cardNumber);
 }
 
-// Show placement dialog
 function showPlacementDialog(type) {
-    placementType = type;
-    const dialog = document.getElementById('placementDialog');
-    const title = document.getElementById('placementTitle');
-    const input = document.getElementById('slotInput');
+    placementType    = type;
+    const title      = document.getElementById('placementTitle');
+    const input      = document.getElementById('slotInput');
 
     if (type === 'rules') {
         title.textContent = 'Выберите правило (1-29)';
@@ -510,59 +376,34 @@ function showPlacementDialog(type) {
     } else if (type === 'history') {
         title.textContent = 'Выберите слот истории (1-18)';
         input.setAttribute('max', '18');
-        
-        // Find nearest empty slot
-        const emptySlot = findNearestEmptyHistorySlot();
-        input.value = emptySlot || '';
+        input.value = findNearestEmptyHistorySlot() || '';
     }
 
-    dialog.showModal();
+    document.getElementById('placementDialog').showModal();
 }
 
-// Close placement dialog
 function closePlacementDialog() {
     document.getElementById('placementDialog').close();
     placementType = null;
-    
-    // Focus input on desktop only
-    if (isDesktop()) {
-        setTimeout(() => {
-            document.getElementById('archiveNumInput').focus();
-        }, 100);
-    }
+    if (isDesktop()) setTimeout(() => document.getElementById('archiveNumInput').focus(), 100);
 }
 
-// Find nearest empty history slot
 function findNearestEmptyHistorySlot() {
-    for (let i = 0; i < state.history.length; i++) {
-        if (state.history[i].card === null) {
-            return state.history[i].index;
-        }
+    for (const h of state.history) {
+        if (h.card === null) return h.index;
     }
     return null;
 }
 
-// Confirm placement
 function confirmPlacement() {
-    const input = document.getElementById('slotInput');
-    const slotNumber = parseInt(input.value);
-
-    if (!slotNumber || slotNumber < 1) {
-        showError('Введите корректный номер слота');
-        return;
-    }
+    const slotNumber = parseInt(document.getElementById('slotInput').value);
+    if (!slotNumber || slotNumber < 1) { showError('Введите корректный номер слота'); return; }
 
     if (placementType === 'rules') {
-        if (slotNumber > 29) {
-            showError('Номер правила должен быть от 1 до 29');
-            return;
-        }
+        if (slotNumber > 29) { showError('Номер правила должен быть от 1 до 29'); return; }
         placeCardInRules(currentCard, slotNumber);
     } else if (placementType === 'history') {
-        if (slotNumber > 18) {
-            showError('Номер слота должен быть от 1 до 18');
-            return;
-        }
+        if (slotNumber > 18) { showError('Номер слота должен быть от 1 до 18'); return; }
         placeCardInHistory(currentCard, slotNumber);
     }
 
@@ -571,633 +412,470 @@ function confirmPlacement() {
     renderCurrentTab();
 }
 
-// Place card in rules
 function placeCardInRules(cardNumber, ruleNumber) {
-    // Remove card from everywhere first
     removeCardFromEverywhere(cardNumber);
-
-    // Find and update the rule
-    const ruleIndex = state.rules.findIndex(r => r.ruleNumber === ruleNumber);
-    if (ruleIndex !== -1) {
-        state.rules[ruleIndex].card = cardNumber;
-        state.rules[ruleIndex].new = true;
-        saveState();
-    }
+    const idx = state.rules.findIndex(r => r.ruleNumber === ruleNumber);
+    if (idx !== -1) { state.rules[idx].card = cardNumber; state.rules[idx].new = true; saveState(); }
 }
 
-// Place card in history
 function placeCardInHistory(cardNumber, index) {
-    // Remove card from everywhere first
     removeCardFromEverywhere(cardNumber);
-
-    // Find and update the history slot
-    const historyIndex = state.history.findIndex(h => h.index === index);
-    if (historyIndex !== -1) {
-        state.history[historyIndex].card = cardNumber;
-        state.history[historyIndex].new = true;
-        saveState();
-    }
+    const idx = state.history.findIndex(h => h.index === index);
+    if (idx !== -1) { state.history[idx].card = cardNumber; state.history[idx].new = true; saveState(); }
 }
 
-// Remove card from all locations
+// Add card to minions list (no slot selection — always appends)
+function placeInMinions() {
+    if (!currentCard) return;
+    if (state.minions.some(m => m.card === currentCard)) return;
+    removeCardFromEverywhere(currentCard);
+    state.minions.push({ card: currentCard, new: true });
+    saveState();
+    closeCardDialog();
+    renderCurrentTab();
+}
+
 function removeCardFromEverywhere(cardNumber) {
-    // Remove from rules
-    state.rules.forEach(rule => {
-        if (rule.card === cardNumber) {
-            rule.card = null;
-            delete rule.new;
-        }
+    state.rules.forEach(r => {
+        if (r.card === cardNumber) { r.card = null; delete r.new; }
     });
-
-    // Remove from history
-    state.history.forEach(item => {
-        if (item.card === cardNumber) {
-            item.card = null;
-            delete item.new;
-        }
+    state.history.forEach(h => {
+        if (h.card === cardNumber) { h.card = null; delete h.new; }
     });
+    // Minions: remove entry entirely (dynamic list, no empty slots)
+    state.minions = state.minions.filter(m => m.card !== cardNumber);
 }
 
-// Render rules list
+// ─── RENDER ───────────────────────────────────────────────────────────────────
+
 function renderRules() {
     const container = document.getElementById('rulesList');
     container.innerHTML = '';
-
-    state.rules.forEach(rule => {
-        const slot = createSlotElement(rule.ruleNumber, rule.card, 'rule');
-        container.appendChild(slot);
-    });
+    state.rules.forEach(rule =>
+        container.appendChild(createSlotElement(rule.ruleNumber, rule.card, 'rule'))
+    );
 }
 
-// Render history list
 function renderHistory() {
     const container = document.getElementById('historyList');
     container.innerHTML = '';
+    state.history.forEach(item =>
+        container.appendChild(createSlotElement(item.index, item.card, 'history'))
+    );
+}
 
-    state.history.forEach(item => {
-        const slot = createSlotElement(item.index, item.card, 'history');
+function renderMinions() {
+    const container = document.getElementById('minionsList');
+    container.innerHTML = '';
+
+    if (!state.minions || state.minions.length === 0) {
+        const empty = document.createElement('p');
+        empty.className   = 'minions-empty';
+        empty.textContent = 'Нет открытых карточек миньонов';
+        container.appendChild(empty);
+        return;
+    }
+
+    state.minions.forEach((item, idx) => {
+        const slot = document.createElement('div');
+        slot.className = 'slot' + (item.new ? ' new' : '');
+
+        const img   = document.createElement('img');
+        img.className     = 'slot-thumbnail';
+        img.src           = `cards/${language}/${item.card}.jpg`;
+        img.alt           = `Card ${item.card}`;
+        img.loading       = 'lazy';
+        slot.appendChild(img);
+
+        slot.addEventListener('click', () => {
+            currentCard       = item.card;
+            navigationContext = { type: 'minion', currentIndex: idx };
+            showCardDialog();
+        });
+
         container.appendChild(slot);
     });
 }
 
-// Create slot element
 function createSlotElement(number, cardNumber, type) {
-    const slotData = type === 'rule' 
+    const slotData = type === 'rule'
         ? state.rules.find(r => r.ruleNumber === number)
         : state.history.find(h => h.index === number);
-    
+
     const slot = document.createElement('div');
     slot.className = cardNumber ? 'slot' : 'slot empty';
-    
-    // Add 'new' class if card is marked as new
-    if (slotData && slotData.new === true) {
-        slot.classList.add('new');
-    }
+    if (slotData && slotData.new === true) slot.classList.add('new');
 
-    const numberSpan = document.createElement('span');
-    numberSpan.className = 'slot-number';
-    numberSpan.textContent = `#${number}`;
-    slot.appendChild(numberSpan);
+    const numSpan       = document.createElement('span');
+    numSpan.className   = 'slot-number';
+    numSpan.textContent = `#${number}`;
+    slot.appendChild(numSpan);
 
     if (cardNumber) {
-        const thumbnail = document.createElement('img');
-        thumbnail.className = 'slot-thumbnail';
-        thumbnail.src = `cards/${language}/${cardNumber}.jpg`;
-        thumbnail.alt = `Card ${cardNumber}`;
-        thumbnail.loading = 'lazy';
-        slot.appendChild(thumbnail);
-
-        // Click to view card with navigation
-        slot.addEventListener('click', () => {
-            openCardWithNavigation(cardNumber, type, number);
-        });
+        const thumb   = document.createElement('img');
+        thumb.className = 'slot-thumbnail';
+        thumb.src       = `cards/${language}/${cardNumber}.jpg`;
+        thumb.alt       = `Card ${cardNumber}`;
+        thumb.loading   = 'lazy';
+        slot.appendChild(thumb);
+        slot.addEventListener('click', () => openCardWithNavigation(cardNumber, type, number));
     } else {
-        const emptyText = document.createElement('span');
-        emptyText.className = 'slot-empty-text';
-        emptyText.textContent = 'Пусто';
-        slot.appendChild(emptyText);
+        const empty       = document.createElement('span');
+        empty.className   = 'slot-empty-text';
+        empty.textContent = 'Пусто';
+        slot.appendChild(empty);
     }
 
     return slot;
 }
 
-// Open card with navigation context
+// ─── NAVIGATION ───────────────────────────────────────────────────────────────
+
 function openCardWithNavigation(cardNumber, type, slotNumber) {
-    currentCard = cardNumber;
-    
-    // Find the index in the appropriate list
-    const list = type === 'rule' ? state.rules : state.history;
-    const index = list.findIndex(item => {
-        const itemNumber = type === 'rule' ? item.ruleNumber : item.index;
-        return itemNumber === slotNumber;
-    });
-    
-    navigationContext = {
-        type: type,
-        currentIndex: index
-    };
-    
+    currentCard       = cardNumber;
+    const list        = type === 'rule' ? state.rules : state.history;
+    const index       = list.findIndex(item =>
+        (type === 'rule' ? item.ruleNumber : item.index) === slotNumber
+    );
+    navigationContext = { type, currentIndex: index };
     showCardDialog();
 }
 
-// Navigate to previous card in the list
+function getNavList() {
+    if (!navigationContext) return [];
+    if (navigationContext.type === 'rule')    return state.rules;
+    if (navigationContext.type === 'history') return state.history;
+    if (navigationContext.type === 'minion')  return state.minions;
+    return [];
+}
+
+function itemHasCard(item) {
+    // Minion entries always have a card; rule/history may be null
+    return item && (navigationContext.type === 'minion' || item.card !== null);
+}
+
 function navigateToPrevCard() {
     if (!navigationContext) return;
-    
-    const list = navigationContext.type === 'rule' ? state.rules : state.history;
-    let newIndex = navigationContext.currentIndex - 1;
-    
-    // Find previous non-empty slot
-    while (newIndex >= 0) {
-        if (list[newIndex].card !== null) {
-            navigationContext.currentIndex = newIndex;
-            currentCard = list[newIndex].card;
-            
-            // Show loading state
-            const spinner = document.getElementById('loadingSpinner');
-            const cardImage = document.getElementById('cardImage');
-            spinner.style.display = 'flex';
-            cardImage.style.display = 'none';
-            
-            loadCardImage().then(() => {
-                spinner.style.display = 'none';
-                cardImage.style.display = 'block';
-                updateNavigationUI();
-            }).catch(() => {
-                spinner.style.display = 'none';
-                showError('Ошибка загрузки изображения');
-            });
+    const list = getNavList();
+    for (let i = navigationContext.currentIndex - 1; i >= 0; i--) {
+        if (itemHasCard(list[i])) {
+            navigationContext.currentIndex = i;
+            currentCard = list[i].card;
+            reloadCardImage();
             return;
         }
-        newIndex--;
     }
 }
 
-// Navigate to next card in the list
 function navigateToNextCard() {
     if (!navigationContext) return;
-    
-    const list = navigationContext.type === 'rule' ? state.rules : state.history;
-    let newIndex = navigationContext.currentIndex + 1;
-    
-    // Find next non-empty slot
-    while (newIndex < list.length) {
-        if (list[newIndex].card !== null) {
-            navigationContext.currentIndex = newIndex;
-            currentCard = list[newIndex].card;
-            
-            // Show loading state
-            const spinner = document.getElementById('loadingSpinner');
-            const cardImage = document.getElementById('cardImage');
-            spinner.style.display = 'flex';
-            cardImage.style.display = 'none';
-            
-            loadCardImage().then(() => {
-                spinner.style.display = 'none';
-                cardImage.style.display = 'block';
-                updateNavigationUI();
-            }).catch(() => {
-                spinner.style.display = 'none';
-                showError('Ошибка загрузки изображения');
-            });
+    const list = getNavList();
+    for (let i = navigationContext.currentIndex + 1; i < list.length; i++) {
+        if (itemHasCard(list[i])) {
+            navigationContext.currentIndex = i;
+            currentCard = list[i].card;
+            reloadCardImage();
             return;
         }
-        newIndex++;
     }
 }
 
-// Update navigation UI (info text and button states)
+function reloadCardImage() {
+    const spinner   = document.getElementById('loadingSpinner');
+    const cardImage = document.getElementById('cardImage');
+    spinner.style.display   = 'flex';
+    cardImage.style.display = 'none';
+    loadCardImage()
+        .then(() => { spinner.style.display = 'none'; cardImage.style.display = 'block'; updateNavigationUI(); })
+        .catch(() => { spinner.style.display = 'none'; showError('Ошибка загрузки изображения'); });
+}
+
 function updateNavigationUI() {
     if (!navigationContext) return;
-    
-    const list = navigationContext.type === 'rule' ? state.rules : state.history;
-    const currentItem = list[navigationContext.currentIndex];
-    const itemNumber = navigationContext.type === 'rule' ? currentItem.ruleNumber : currentItem.index;
-    const typeName = navigationContext.type === 'rule' ? 'Правило' : 'История';
-    
-    // Update info text
-    const navInfo = document.getElementById('navInfo');
-    navInfo.textContent = `${typeName} #${itemNumber}`;
-    
-    // Update button states
-    const prevBtn = document.getElementById('prevCardBtn');
-    const nextBtn = document.getElementById('nextCardBtn');
-    
-    // Check if there's a previous non-empty slot
+    const list    = getNavList();
+    const current = list[navigationContext.currentIndex];
+
+    let label;
+    if (navigationContext.type === 'rule') {
+        label = `Правило #${current.ruleNumber}`;
+    } else if (navigationContext.type === 'history') {
+        label = `История #${current.index}`;
+    } else {
+        label = `Миньон ${navigationContext.currentIndex + 1} из ${list.length}`;
+    }
+    document.getElementById('navInfo').textContent = label;
+
     let hasPrev = false;
     for (let i = navigationContext.currentIndex - 1; i >= 0; i--) {
-        if (list[i].card !== null) {
-            hasPrev = true;
-            break;
-        }
+        if (itemHasCard(list[i])) { hasPrev = true; break; }
     }
-    
-    // Check if there's a next non-empty slot
     let hasNext = false;
     for (let i = navigationContext.currentIndex + 1; i < list.length; i++) {
-        if (list[i].card !== null) {
-            hasNext = true;
-            break;
-        }
+        if (itemHasCard(list[i])) { hasNext = true; break; }
     }
-    
-    prevBtn.disabled = !hasPrev;
-    nextBtn.disabled = !hasNext;
+
+    document.getElementById('prevCardBtn').disabled = !hasPrev;
+    document.getElementById('nextCardBtn').disabled = !hasNext;
 }
 
-// Open crate
+// ─── CRATE DIALOG ─────────────────────────────────────────────────────────────
+
 function openCrate() {
-    const input = document.getElementById('crateInput');
-    const crateId = input.value.trim().toUpperCase();
-
-    if (!crateId) {
-        showError('Введите номер ящика');
-        return;
-    }
-
-    if (!cratesData) {
-        showError('Данные ящиков не загружены');
-        return;
-    }
-
-    const crateContent = cratesData[crateId];
-    if (!crateContent) {
-        showError('Ящик не найден');
-        return;
-    }
-
-    showCrateDialog(crateId, crateContent);
+    const crateId = document.getElementById('crateInput').value.trim().toUpperCase();
+    if (!crateId)      { showError('Введите номер ящика');          return; }
+    if (!cratesData)   { showError('Данные ящиков не загружены');   return; }
+    const content = cratesData[crateId];
+    if (!content)      { showError('Ящик не найден');               return; }
+    showCrateDialog(crateId, content);
 }
 
-// Parse a range string like "337-342" or "337–342" into array of card numbers
 function parseCardRange(value) {
-    const strValue = String(value).trim();
-    // Match range patterns with both hyphen and en-dash
-    const rangeMatch = strValue.match(/^(\d+)\s*[–-]\s*(\d+)$/);
-    if (rangeMatch) {
-        const start = parseInt(rangeMatch[1]);
-        const end = parseInt(rangeMatch[2]);
-        const numbers = [];
-        for (let i = start; i <= end; i++) {
-            numbers.push(i);
-        }
-        return numbers;
+    const str = String(value).trim();
+    const rm  = str.match(/^(\d+)\s*[–-]\s*(\d+)$/);
+    if (rm) {
+        const nums = [];
+        for (let i = parseInt(rm[1]); i <= parseInt(rm[2]); i++) nums.push(i);
+        return nums;
     }
-    // Single number
-    const singleMatch = strValue.match(/^(\d+)$/);
-    if (singleMatch) {
-        return [parseInt(singleMatch[1])];
-    }
-    return null; // Non-numeric (like "v", "ii")
+    const sm = str.match(/^(\d+)$/);
+    return sm ? [parseInt(sm[1])] : null;
 }
 
-// Show crate dialog
 function showCrateDialog(crateId, crateContent) {
-    const dialog = document.getElementById('crateDialog');
-    const title = document.getElementById('crateTitle');
-    const content = document.getElementById('crateContent');
+    const dialog       = document.getElementById('crateDialog');
+    const title        = document.getElementById('crateTitle');
+    const content      = document.getElementById('crateContent');
     const notification = document.getElementById('crateNotification');
 
-    title.textContent = `Ящик ${crateId}`;
-    content.innerHTML = '';
+    title.textContent     = `Ящик ${crateId}`;
+    content.innerHTML     = '';
     notification.style.display = 'none';
-    notification.textContent = '';
+    navigationStack       = null;
 
-    // Clear navigation stack when opening a new crate
-    navigationStack = null;
-
-    // Process story cards first and place them automatically
+    // Auto-place story cards
     if (crateContent.story && crateContent.story.length > 0) {
         const storyCards = [];
         crateContent.story.forEach(item => {
-            const numbers = parseCardRange(item.value);
-            if (numbers) {
-                numbers.forEach(n => storyCards.push(n));
-            }
+            const nums = parseCardRange(item.value);
+            if (nums) nums.forEach(n => storyCards.push(n));
         });
-
         if (storyCards.length > 0) {
             const result = placeStoryCards(storyCards);
             if (result.message) {
                 notification.textContent = result.message;
-                notification.className = 'crate-notification ' + (result.placed > 0 ? 'success' : 'info');
+                notification.className   = 'crate-notification ' + (result.placed > 0 ? 'success' : 'info');
                 notification.style.display = 'block';
             }
         }
     }
 
-    // Render all categories
-    const categoryOrder = ['story', 'rules', 'various', 'gain', 'general_supply', 'tuckbox'];
-    
-    categoryOrder.forEach(categoryKey => {
-        const categoryData = crateContent[categoryKey];
-        if (!categoryData) return; // Skip empty categories
+    ['story', 'rules', 'various', 'gain', 'general_supply', 'tuckbox'].forEach(key => {
+        const data = crateContent[key];
+        if (!data) return;
 
-        const categoryDiv = document.createElement('div');
-        categoryDiv.className = 'crate-category';
+        const info   = categoryInfo[key];
+        const catDiv = document.createElement('div');
+        catDiv.className = 'crate-category';
 
-        const info = categoryInfo[categoryKey];
-        const titleDiv = document.createElement('div');
-        titleDiv.className = 'crate-category-title';
-        titleDiv.textContent = info.title;
-        categoryDiv.appendChild(titleDiv);
+        const tDiv       = document.createElement('div');
+        tDiv.className   = 'crate-category-title';
+        tDiv.textContent = info.title;
+        catDiv.appendChild(tDiv);
 
         if (info.subtitle) {
-            const subtitleDiv = document.createElement('div');
-            subtitleDiv.className = 'crate-category-subtitle';
-            subtitleDiv.textContent = `(${info.subtitle})`;
-            categoryDiv.appendChild(subtitleDiv);
+            const sub       = document.createElement('div');
+            sub.className   = 'crate-category-subtitle';
+            sub.textContent = `(${info.subtitle})`;
+            catDiv.appendChild(sub);
         }
 
-        const itemsList = document.createElement('ul');
-        itemsList.className = 'crate-items';
+        const ul = document.createElement('ul');
+        ul.className = 'crate-items';
 
-        // Handle tuckbox separately (it's an object, not an array)
-        if (categoryKey === 'tuckbox') {
-            const item = document.createElement('li');
-            item.className = 'crate-item';
-            item.textContent = `- ${categoryData.value}`;
-            if (categoryData.note) {
-                const note = document.createElement('span');
-                note.className = 'crate-item-note';
-                note.textContent = ` (${categoryData.note})`;
-                item.appendChild(note);
+        if (key === 'tuckbox') {
+            const li       = document.createElement('li');
+            li.className   = 'crate-item';
+            li.textContent = `- ${data.value}`;
+            if (data.note) {
+                const n       = document.createElement('span');
+                n.className   = 'crate-item-note';
+                n.textContent = ` (${data.note})`;
+                li.appendChild(n);
             }
-            itemsList.appendChild(item);
+            ul.appendChild(li);
         } else {
-            // Process array items
-            categoryData.forEach(cardItem => {
-                const item = document.createElement('li');
-                item.className = 'crate-item';
+            data.forEach(cardItem => {
+                const li = document.createElement('li');
+                li.className = 'crate-item';
+                li.appendChild(document.createTextNode('- '));
 
-                item.appendChild(document.createTextNode('- '));
-
-                const numbers = parseCardRange(cardItem.value);
-
-                if (numbers && numbers.length > 0) {
-                    // Render each number in the range as a clickable link
-                    numbers.forEach((num, idx) => {
-                        if (idx > 0) {
-                            item.appendChild(document.createTextNode('–'));
-                        }
-                        const link = document.createElement('span');
-                        link.className = 'card-link';
+                const nums = parseCardRange(cardItem.value);
+                if (nums && nums.length > 0) {
+                    nums.forEach((num, idx) => {
+                        if (idx > 0) li.appendChild(document.createTextNode('–'));
+                        const link       = document.createElement('span');
+                        link.className   = 'card-link';
                         link.textContent = String(num);
-                        link.dataset.card = num;
                         link.addEventListener('click', () => openCardFromCrate(num));
-                        item.appendChild(link);
+                        li.appendChild(link);
                     });
-                } else {
-                    // Non-numeric value, just show as text
-                    item.appendChild(document.createTextNode(String(cardItem.value)));
-                }
-                
-                // Show placement info for single cards or first card of range
-                if (numbers && numbers.length > 0) {
-                    const placement = findCardPlacement(numbers[0]);
+
+                    const placement = findCardPlacement(nums[0]);
                     if (placement) {
-                        const placedSpan = document.createElement('span');
-                        placedSpan.className = 'crate-item-placed';
-                        placedSpan.textContent = ` [${placement}]`;
-                        item.appendChild(placedSpan);
+                        const sp       = document.createElement('span');
+                        sp.className   = 'crate-item-placed';
+                        sp.textContent = ` [${placement}]`;
+                        li.appendChild(sp);
                     }
+                } else {
+                    li.appendChild(document.createTextNode(String(cardItem.value)));
                 }
-                
+
                 if (cardItem.note) {
-                    const note = document.createElement('span');
-                    note.className = 'crate-item-note';
-                    note.textContent = ` (${cardItem.note})`;
-                    item.appendChild(note);
+                    const n       = document.createElement('span');
+                    n.className   = 'crate-item-note';
+                    n.textContent = ` (${cardItem.note})`;
+                    li.appendChild(n);
                 }
-                itemsList.appendChild(item);
+                ul.appendChild(li);
             });
         }
 
-        categoryDiv.appendChild(itemsList);
-        content.appendChild(categoryDiv);
+        catDiv.appendChild(ul);
+        content.appendChild(catDiv);
     });
 
     dialog.showModal();
 }
 
-// Close crate dialog
 function closeCrateDialog() {
-    // Clear navigation stack when crate dialog is explicitly closed
     navigationStack = null;
     document.getElementById('crateDialog').close();
-    // Restore display in case it was hidden for card preview
     document.getElementById('crateDialog').style.display = '';
 }
 
-// Parse card value (handles single numbers and ranges) — returns first number
-function parseCardValue(value) {
-    const strValue = String(value);
-    // For now, return first number if it's a range, or the number itself
-    const match = strValue.match(/\d+/);
-    return match ? parseInt(match[0]) : null;
-}
-
-// Find where a card is placed
 function findCardPlacement(cardNumber) {
-    // Check in rules
-    const ruleIndex = state.rules.findIndex(r => r.card === cardNumber);
-    if (ruleIndex !== -1) {
-        return `Правило #${state.rules[ruleIndex].ruleNumber}`;
-    }
-    
-    // Check in history
-    const historyIndex = state.history.findIndex(h => h.card === cardNumber);
-    if (historyIndex !== -1) {
-        return `История #${state.history[historyIndex].index}`;
-    }
-    
+    const rule = state.rules.find(r => r.card === cardNumber);
+    if (rule) return `Правило #${rule.ruleNumber}`;
+    const hist = state.history.find(h => h.card === cardNumber);
+    if (hist) return `История #${hist.index}`;
+    const mIdx = state.minions.findIndex(m => m.card === cardNumber);
+    if (mIdx !== -1) return `Миньон #${mIdx + 1}`;
     return null;
 }
 
-// Place story cards in history automatically
+// ─── STORY AUTO-PLACEMENT ─────────────────────────────────────────────────────
+
 function placeStoryCards(cardNumbers) {
-    let placedCount = 0;
-    let skippedCount = 0;
-    
+    let placed = 0, skipped = 0;
+
     cardNumbers.forEach(cardNumber => {
-        // Check if card already exists in history
-        const alreadyInHistory = state.history.some(h => h.card === cardNumber);
-        if (alreadyInHistory) {
-            skippedCount++;
-            return; // Skip this card
-        }
-        
-        // Find first empty history slot
-        const emptySlot = state.history.find(h => h.card === null);
-        if (emptySlot) {
-            emptySlot.card = cardNumber;
-            emptySlot.new = true;
-            placedCount++;
-        }
+        if (state.history.some(h => h.card === cardNumber)) { skipped++; return; }
+        const slot = state.history.find(h => h.card === null);
+        if (slot) { slot.card = cardNumber; slot.new = true; placed++; }
     });
 
-    if (placedCount > 0 || skippedCount > 0) {
+    if (placed > 0 || skipped > 0) {
         saveState();
-        
-        // Render current tab if we're on History tab
         const activeTab = document.querySelector('.tab-btn.active');
-        if (activeTab && activeTab.dataset.tab === 'history') {
-            renderHistory();
-        }
-        
-        // Generate notification message
+        if (activeTab && activeTab.dataset.tab === 'history') renderHistory();
+
         let message = '';
-        if (skippedCount > 0 && placedCount > 0) {
-            const skippedWord = skippedCount === 1 ? 'карта уже была размещена' : (skippedCount < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
-            const placedWord = placedCount === 1 ? 'добавлена 1 новая' : (placedCount < 5 ? `добавлены ${placedCount} новые` : `добавлено ${placedCount} новых`);
-            message = `${skippedCount} ${skippedWord}, ${placedWord}`;
-        } else if (skippedCount > 0) {
-            const skippedWord = skippedCount === 1 ? 'карта уже была размещена' : (skippedCount < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
-            message = `${skippedCount} ${skippedWord}`;
+        if (skipped > 0 && placed > 0) {
+            const sw = skipped === 1 ? 'карта уже была размещена' : (skipped < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
+            const pw = placed  === 1 ? 'добавлена 1 новая'        : (placed  < 5 ? `добавлены ${placed} новые`  : `добавлено ${placed} новых`);
+            message = `${skipped} ${sw}, ${pw}`;
+        } else if (skipped > 0) {
+            const sw = skipped === 1 ? 'карта уже была размещена' : (skipped < 5 ? 'карты уже были размещены' : 'карт уже были размещены');
+            message = `${skipped} ${sw}`;
         } else {
-            const cardWord = placedCount === 1 ? 'карта' : (placedCount < 5 ? 'карты' : 'карт');
-            message = `Размещено: ${placedCount} ${cardWord} в историю`;
+            const cw = placed === 1 ? 'карта' : (placed < 5 ? 'карты' : 'карт');
+            message = `Размещено: ${placed} ${cw} в историю`;
         }
-        
-        return { message, placed: placedCount, skipped: skippedCount };
+
+        return { message, placed, skipped };
     }
-    
+
     return { message: '', placed: 0, skipped: 0 };
 }
 
-// Reset to initial state
+// ─── RESET / EXPORT / IMPORT ──────────────────────────────────────────────────
+
 async function resetToInitial() {
-    const confirmed = confirm('Сбросить все данные до начального состояния? Все изменения будут потеряны.');
-    
-    if (!confirmed) {
-        return;
-    }
-    
+    if (!confirm('Сбросить все данные до начального состояния? Все изменения будут потеряны.')) return;
     try {
         await loadInitialState();
-        
-        // Update version input to match initial state version
         const version = state.version || 1;
         localStorage.setItem('currentVersion', version.toString());
         document.getElementById('versionInput').value = version;
-        
         renderCurrentTab();
         showError('Данные сброшены до начального состояния', false);
     } catch (e) {
-        showError('Ошибка при сбросе данных');
-        console.error(e);
+        showError('Ошибка при сбросе данных'); console.error(e);
     }
 }
 
-// Export state
 function exportState() {
-    const dataStr = JSON.stringify(state, null, 2);
-    const dataBlob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(dataBlob);
-    
+    const blob = new Blob([JSON.stringify(state, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = url;
+    link.href     = url;
     link.download = `charterstone-state-${new Date().toISOString().split('T')[0]}.json`;
     link.click();
-    
     URL.revokeObjectURL(url);
 }
 
-// Import state
 async function importState(event) {
     const file = event.target.files[0];
     if (!file) return;
-
     try {
-        const text = await file.text();
-        const importedState = JSON.parse(text);
-
-        // Validate structure
-        if (!validateState(importedState)) {
-            showError('Неверная структура файла');
-            return;
-        }
-
-        state = importedState;
+        const imported = JSON.parse(await file.text());
+        if (!validateState(imported)) { showError('Неверная структура файла'); return; }
+        state = imported;
+        if (!state.minions) state.minions = [];
         saveState();
         renderCurrentTab();
         showError('Импорт выполнен успешно', false);
     } catch (e) {
-        showError('Ошибка импорта файла');
-        console.error(e);
+        showError('Ошибка импорта файла'); console.error(e);
     }
-
-    // Reset file input
     event.target.value = '';
 }
 
-// Validate state structure
-function validateState(importedState) {
-    if (!importedState || typeof importedState !== 'object') {
-        return false;
-    }
+function validateState(s) {
+    if (!s || typeof s !== 'object')                                  return false;
+    if (s.version !== undefined && typeof s.version !== 'number')     return false;
+    if (!Array.isArray(s.rules)   || s.rules.length   !== 29)        return false;
+    if (!Array.isArray(s.history) || s.history.length !== 18)        return false;
+    if (s.minions !== undefined   && !Array.isArray(s.minions))       return false;
 
-    // Version is optional but should be a number if present
-    if (importedState.version !== undefined && typeof importedState.version !== 'number') {
-        return false;
+    for (const r of s.rules) {
+        if (!r || typeof r.ruleNumber !== 'number'
+            || (r.card !== null && typeof r.card !== 'number')
+            || (r.new !== undefined && typeof r.new !== 'boolean')) return false;
     }
-
-    // Check rules array
-    if (!Array.isArray(importedState.rules) || importedState.rules.length !== 29) {
-        return false;
+    for (const h of s.history) {
+        if (!h || typeof h.index !== 'number'
+            || (h.card !== null && typeof h.card !== 'number')
+            || (h.new !== undefined && typeof h.new !== 'boolean')) return false;
     }
-
-    // Check history array
-    if (!Array.isArray(importedState.history) || importedState.history.length !== 18) {
-        return false;
-    }
-
-    // Validate rules structure
-    for (let i = 0; i < importedState.rules.length; i++) {
-        const rule = importedState.rules[i];
-        if (!rule || typeof rule.ruleNumber !== 'number' || 
-            (rule.card !== null && typeof rule.card !== 'number') ||
-            (rule.new !== undefined && typeof rule.new !== 'boolean')) {
-            return false;
-        }
-    }
-
-    // Validate history structure
-    for (let i = 0; i < importedState.history.length; i++) {
-        const item = importedState.history[i];
-        if (!item || typeof item.index !== 'number' || 
-            (item.card !== null && typeof item.card !== 'number') ||
-            (item.new !== undefined && typeof item.new !== 'boolean')) {
-            return false;
-        }
-    }
-
     return true;
 }
 
-// Show error message
+// ─── TOAST ────────────────────────────────────────────────────────────────────
+
 function showError(message, isError = true) {
-    const existingError = document.querySelector('.error-message');
-    if (existingError) {
-        existingError.remove();
-    }
-
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'error-message';
-    errorDiv.textContent = message;
-    
-    if (!isError) {
-        errorDiv.style.background = '#4CAF50';
-    }
-    
-    document.body.appendChild(errorDiv);
-
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 3000);
+    document.querySelector('.error-message')?.remove();
+    const div       = document.createElement('div');
+    div.className   = 'error-message';
+    div.textContent = message;
+    if (!isError) div.style.background = '#4CAF50';
+    document.body.appendChild(div);
+    setTimeout(() => div.remove(), 3000);
 }
 
-// Initialize app when DOM is ready
+// ─── BOOT ─────────────────────────────────────────────────────────────────────
+
 if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', init);
 } else {

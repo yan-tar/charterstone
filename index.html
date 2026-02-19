@@ -25,14 +25,14 @@
                 <button id="langEn" class="lang-btn">EN</button>
             </div>
         </div>
-        
+
         <!-- Navigation tabs -->
         <nav class="tabs">
             <button class="tab-btn active" data-tab="rules">Правила</button>
             <button class="tab-btn" data-tab="history">История</button>
             <a href="automa.pdf" class="tab-btn">Автома</a>
         </nav>
-        
+
         <!-- Import/Export buttons -->
         <div class="io-controls">
             <div class="version-control">
@@ -54,10 +54,13 @@
             <div id="rulesList" class="slots-list"></div>
         </section>
 
-        <!-- History tab -->
+        <!-- History tab — history slots + minions section below -->
         <section id="historyTab" class="tab-content">
             <h2>История (18)</h2>
             <div id="historyList" class="slots-list"></div>
+
+            <h2 class="minions-heading">Миньоны</h2>
+            <div id="minionsList" class="slots-list minions-list"></div>
         </section>
     </main>
 
@@ -65,39 +68,41 @@
     <dialog id="cardDialog" class="card-dialog">
         <div class="dialog-content">
             <button class="close-btn" id="closeDialog">&times;</button>
-            
+
             <!-- Back to crate button (only visible when opened from crate) -->
             <button id="backToCrateBtn" class="back-btn" style="display: none;">← Назад к ящику</button>
 
-            <!-- Navigation slider (only visible when viewing from rules/history) -->
+            <!-- Navigation slider (only visible when viewing from rules/history/minions) -->
             <div class="card-navigation" id="cardNavigation" style="display: none;">
                 <button class="nav-btn" id="prevCardBtn">‹</button>
                 <span class="nav-info" id="navInfo"></span>
                 <button class="nav-btn" id="nextCardBtn">›</button>
             </div>
-            
+
             <!-- Loading spinner -->
             <div class="loading-spinner" id="loadingSpinner" style="display: none;">
                 <div class="spinner"></div>
                 <p>Загрузка карточки...</p>
             </div>
-            
+
             <img id="cardImage" class="card-image" alt="Card" style="display: none;">
+
             <div class="dialog-actions" id="dialogActions">
-                <button id="placeInRulesBtn" class="action-btn">Поставить в правило</button>
-                <button id="placeInHistoryBtn" class="action-btn">Поставить в историю</button>
+                <button id="placeInRulesBtn"   class="action-btn">Поставить в правило</button>
+                <button id="placeInHistoryBtn"  class="action-btn">Поставить в историю</button>
+                <button id="placeInMinionsBtn"  class="action-btn">Добавить в миньоны</button>
             </div>
         </div>
     </dialog>
 
-    <!-- Placement dialog for rules -->
+    <!-- Placement dialog for rules / history -->
     <dialog id="placementDialog" class="placement-dialog">
         <form id="placementForm" class="dialog-content">
             <h3 id="placementTitle">Выберите слот</h3>
             <input type="number" id="slotInput" min="1" autocomplete="off">
             <div class="placement-actions">
                 <button type="submit" id="confirmPlacement" class="action-btn">Подтвердить</button>
-                <button type="button" id="cancelPlacement" class="action-btn secondary">Отмена</button>
+                <button type="button" id="cancelPlacement"  class="action-btn secondary">Отмена</button>
             </div>
         </form>
     </dialog>

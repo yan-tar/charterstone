@@ -195,5 +195,11 @@
       "index": 18,
       "card": null
     }
+  ],
+    
+  "minions": [
+    { "card": 227 },
+    { "card": 309 },
+    { "card": 332 }
   ]
 }

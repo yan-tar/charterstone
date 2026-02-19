@@ -643,6 +643,21 @@ dialog {
       max-height: 100vh;
     }
 }
+/* ── Minions section ───────────────────────────────────────────────────────── */
+.minions-heading {
+    font-size: 20px;
+    margin-top: 32px;
+    margin-bottom: 16px;
+    font-weight: 600;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.minions-empty {
+    color: #999;
+    font-size: 14px;
+    padding: 8px 0;
+}
 
 /* Clickable card links in crate dialog */
 .card-link {
