@@ -27,7 +27,6 @@ body {
     padding: 12px 16px;
 }
 
-/* Controls section */
 .controls {
     display: flex;
     justify-content: space-between;
@@ -69,8 +68,6 @@ input::placeholder {
     background: #555;
 }
 
-
-/* Crate input group */
 .crate-input-group {
     display: flex;
     gap: 8px;
@@ -88,7 +85,7 @@ input::placeholder {
 }
 
 .crate-input-group input::placeholder {
-  text-transform: capitalize;
+    text-transform: capitalize;
 }
 
 .crate-input-group button {
@@ -105,7 +102,6 @@ input::placeholder {
     background: #555;
 }
 
-/* Language toggle */
 .language-toggle {
     display: flex;
     gap: 4px;
@@ -142,11 +138,10 @@ input::placeholder {
     border-radius: 4px;
     font-size: 16px;
     cursor: pointer;
-    font-weight: 500;
-    color: black;
     font-weight: 400;
     line-height: 1;
     text-align: center;
+    color: black;
 }
 
 .tab-btn.active {
@@ -160,7 +155,7 @@ input::placeholder {
     display: flex;
     gap: 8px;
     align-items: center;
-    display: none;
+    /* display: none; */
 }
 
 .io-controls button {
@@ -210,7 +205,7 @@ input::placeholder {
 
 /* Main content */
 .main-content {
-    margin-top: 130px; /* Adjust based on header height */
+    margin-top: 130px;
     padding: 16px;
     padding-bottom: 40px;
 }
@@ -232,7 +227,7 @@ input::placeholder {
 /* Slots list */
 .slots-list {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px,1fr));
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
     gap: 12px;
 }
 
@@ -254,7 +249,8 @@ input::placeholder {
     border: 1px solid lightgray;
     cursor: default;
 }
-.slot.new img{
+
+.slot.new img {
     border: 2px solid #4CAF50;
     box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
 }
@@ -280,10 +276,27 @@ input::placeholder {
     display: none;
 }
 
+/* ── Misc tab ─────────────────────────────────────────────────────────────── */
+.misc-section-heading {
+    font-size: 20px;
+    font-weight: 600;
+    margin-top: 32px;
+    margin-bottom: 16px;
+    padding-top: 24px;
+    border-top: 1px solid #e0e0e0;
+}
+
+.misc-empty {
+    color: #999;
+    font-size: 14px;
+    padding: 4px 0;
+    grid-column: 1 / -1;
+}
+
 /* Card dialog */
 dialog {
-  margin-inline: auto;
-  margin-top: 10px;
+    margin-inline: auto;
+    margin-top: 10px;
 }
 
 .card-dialog {
@@ -383,23 +396,25 @@ dialog {
     border-radius: 4px;
 }
 
+/* Action buttons — 2×2 grid for 4 placement options */
 .dialog-actions {
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
     width: 100%;
     margin-top: 16px;
 }
 
 .action-btn {
-    padding: 14px 20px;
+    padding: 12px 8px;
     background: #333;
     color: #fff;
     border: none;
     border-radius: 4px;
-    font-size: 16px;
+    font-size: 14px;
     cursor: pointer;
     font-weight: 500;
+    text-align: center;
 }
 
 .action-btn:active {
@@ -549,6 +564,34 @@ dialog {
     font-weight: 500;
 }
 
+/* Clickable card links in crate dialog */
+.card-link {
+    color: #2196f3;
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: 500;
+}
+
+.card-link:hover {
+    color: #1565c0;
+}
+
+/* Back-to-crate button in card dialog */
+.back-btn {
+    align-self: flex-start;
+    margin-bottom: 8px;
+    padding: 8px 16px;
+    background: #f5f5f5;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.back-btn:active {
+    background: #e0e0e0;
+}
+
 /* Loading state */
 .loading {
     opacity: 0.5;
@@ -575,7 +618,7 @@ dialog {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
+    0%   { transform: rotate(0deg); }
     100% { transform: rotate(360deg); }
 }
 
@@ -584,7 +627,7 @@ dialog {
     font-size: 14px;
 }
 
-/* Error message */
+/* Error / success toast */
 .error-message {
     position: fixed;
     top: 50%;
@@ -600,13 +643,8 @@ dialog {
 }
 
 @keyframes fadeOut {
-    0%, 70% {
-        opacity: 1;
-    }
-    100% {
-        opacity: 0;
-        display: none;
-    }
+    0%, 70% { opacity: 1; }
+    100%     { opacity: 0; }
 }
 
 /* Responsive adjustments */
@@ -617,7 +655,7 @@ dialog {
         margin-left: auto;
         margin-right: auto;
     }
-    
+
     .header {
         flex-direction: row;
         max-width: 1600px;
@@ -627,63 +665,19 @@ dialog {
     }
 
     .slots-list {
-      grid-template-columns: repeat(auto-fit, minmax(300px,1fr));
+        grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     }
 
     .slot-thumbnail {
-      width: 100%;
-      height: auto;
+        width: 100%;
+        height: auto;
     }
 
     .card-image {
-      max-height: 90vh;
+        max-height: 90vh;
     }
 
     .card-dialog {
-      max-height: 100vh;
+        max-height: 100vh;
     }
-}
-/* ── Minions section ───────────────────────────────────────────────────────── */
-.minions-heading {
-    font-size: 20px;
-    margin-top: 32px;
-    margin-bottom: 16px;
-    font-weight: 600;
-    padding-top: 24px;
-    border-top: 1px solid #e0e0e0;
-}
-
-.minions-empty {
-    color: #999;
-    font-size: 14px;
-    padding: 8px 0;
-}
-
-/* Clickable card links in crate dialog */
-.card-link {
-    color: #2196f3;
-    cursor: pointer;
-    text-decoration: underline;
-    font-weight: 500;
-}
-
-.card-link:hover {
-    color: #1565c0;
-}
-
-/* Back-to-crate button in card dialog */
-.back-btn {
-    align-self: flex-start;
-    margin-bottom: 8px;
-    padding: 8px 16px;
-    background: #f5f5f5;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 14px;
-    order: 0;
-}
-
-.back-btn:active {
-    background: #e0e0e0;
 }

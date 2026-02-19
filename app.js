@@ -2,23 +2,24 @@
 let state = {
     rules: [],
     history: [],
-    minions: [] // Dynamic list: [{ card: 227, new: true }, ...]
+    minions: [], // [{ card: 227, new: true }, ...]
+    goals:   []  // [{ card: 309, new: true }, ...]
 };
 
 let language = 'ru';
 let currentCard = null;
-let placementType = null; // 'rules' | 'history'
-let navigationContext = null; // { type: 'rule' | 'history' | 'minion', currentIndex: number }
+let placementType = null;     // 'rules' | 'history'
+let navigationContext = null; // { type: 'rule'|'history'|'minion'|'goal', currentIndex: number }
 let navigationStack = null;   // { type: 'crate', crateId: string }
 let cratesData = null;
 
 const categoryInfo = {
-    story:          { title: 'ИСТОРИЯ',      subtitle: 'прочитать первым' },
-    rules:          { title: 'ПРАВИЛА',       subtitle: 'прочитать после истории (если есть)' },
-    various:        { title: 'РАЗНОЕ',        subtitle: 'см. инструкции' },
-    gain:           { title: 'ПОЛУЧИТЬ',      subtitle: 'получает игрок, открывший ящик' },
-    general_supply: { title: 'ОБЩИЙ ЗАПАС',   subtitle: '' },
-    tuckbox:        { title: 'КОРОБКА',       subtitle: 'для iv, извлечь только один тип жетонов' }
+    story:          { title: 'ИСТОРИЯ',    subtitle: 'прочитать первым' },
+    rules:          { title: 'ПРАВИЛА',    subtitle: 'прочитать после истории (если есть)' },
+    various:        { title: 'РАЗНОЕ',     subtitle: 'см. инструкции' },
+    gain:           { title: 'ПОЛУЧИТЬ',   subtitle: 'получает игрок, открывший ящик' },
+    general_supply: { title: 'ОБЩИЙ ЗАПАС', subtitle: '' },
+    tuckbox:        { title: 'КОРОБКА',    subtitle: 'для iv, извлечь только один тип жетонов' }
 };
 
 function isDesktop() {
@@ -43,8 +44,7 @@ async function init() {
         initialState = await r.json();
     } catch (e) {
         showError('Ошибка загрузки начального состояния');
-        console.error(e);
-        return;
+        console.error(e); return;
     }
 
     const savedState          = localStorage.getItem('state');
@@ -61,9 +61,10 @@ async function init() {
 
             const initialVersion = initialState.version || 1;
             if (initialVersion > currentVersion) {
-                // Auto-update but preserve minions from old save
-                state          = { ...initialState };
-                state.minions  = Array.isArray(parsed.minions) ? parsed.minions : [];
+                // Auto-update rules/history but preserve dynamic collections
+                state         = { ...initialState };
+                state.minions = Array.isArray(parsed.minions) ? parsed.minions : [];
+                state.goals   = Array.isArray(parsed.goals)   ? parsed.goals   : [];
                 saveState();
                 localStorage.setItem('currentVersion', initialVersion.toString());
                 document.getElementById('versionInput').value = initialVersion;
@@ -71,19 +72,23 @@ async function init() {
             } else {
                 state = parsed;
                 if (!state.minions) state.minions = [];
+                if (!state.goals)   state.goals   = [];
             }
         } catch (e) {
             console.error('Error parsing saved state:', e);
             state         = initialState;
-            state.minions = [];
+            if (!state.minions) state.minions = [];
+            if (!state.goals)   state.goals   = [];
             saveState();
             const version = initialState.version || 1;
             localStorage.setItem('currentVersion', version.toString());
             document.getElementById('versionInput').value = version;
         }
     } else {
-        state         = initialState;
-        state.minions = [];
+        // No localStorage — load entirely from initialState (including minions/goals if present)
+        state = initialState;
+        if (!state.minions) state.minions = [];
+        if (!state.goals)   state.goals   = [];
         saveState();
         const version = initialState.version || 1;
         localStorage.setItem('currentVersion', version.toString());
@@ -98,14 +103,13 @@ async function loadInitialState() {
     try {
         const r = await fetch('initialState.json');
         if (!r.ok) throw new Error('Failed to load initial state');
-        const loaded       = await r.json();
-        const savedMinions = state.minions || []; // preserve minions on reset
-        state              = loaded;
-        state.minions      = savedMinions;
+        state = await r.json();
+        // Use minions/goals from initialState.json if present, otherwise empty
+        if (!state.minions) state.minions = [];
+        if (!state.goals)   state.goals   = [];
         saveState();
     } catch (e) {
-        showError('Ошибка загрузки начального состояния');
-        console.error(e);
+        showError('Ошибка загрузки начального состояния'); console.error(e);
     }
 }
 
@@ -136,7 +140,8 @@ function setupEventListeners() {
     document.getElementById('closeCrateDialog').addEventListener('click', closeCrateDialog);
     document.getElementById('placeInRulesBtn').addEventListener('click', () => showPlacementDialog('rules'));
     document.getElementById('placeInHistoryBtn').addEventListener('click', () => showPlacementDialog('history'));
-    document.getElementById('placeInMinionsBtn').addEventListener('click', placeInMinions);
+    document.getElementById('placeInMinionsBtn').addEventListener('click', () => placeInDynamicCollection('minions'));
+    document.getElementById('placeInGoalsBtn').addEventListener('click',   () => placeInDynamicCollection('goals'));
     document.getElementById('backToCrateBtn').addEventListener('click', returnToCrate);
     document.getElementById('prevCardBtn').addEventListener('click', navigateToPrevCard);
     document.getElementById('nextCardBtn').addEventListener('click', navigateToNextCard);
@@ -208,7 +213,10 @@ function switchTab(tabName) {
     } else if (tabName === 'history') {
         document.getElementById('historyTab').classList.add('active');
         renderHistory();
+    } else if (tabName === 'misc') {
+        document.getElementById('miscTab').classList.add('active');
         renderMinions();
+        renderGoals();
     }
 }
 
@@ -226,28 +234,23 @@ async function openCard() {
         showError('Введите корректный номер карточки'); return;
     }
 
-    const openBtn        = document.getElementById('openCardBtn');
-    openBtn.disabled     = true;
-    openBtn.textContent  = 'Загрузка...';
+    const openBtn       = document.getElementById('openCardBtn');
+    openBtn.disabled    = true;
+    openBtn.textContent = 'Загрузка...';
 
     try {
         const exists = await checkImageExists(cardNumber);
         if (!exists) {
             showError(`Карточка №${cardNumber} не найдена`);
-            openBtn.disabled    = false;
-            openBtn.textContent = 'Открыть';
-            return;
+            openBtn.disabled = false; openBtn.textContent = 'Открыть'; return;
         }
-        currentCard     = cardNumber;
+        currentCard       = cardNumber;
         navigationContext = null;
         showCardDialog();
-        openBtn.disabled    = false;
-        openBtn.textContent = 'Открыть';
+        openBtn.disabled = false; openBtn.textContent = 'Открыть';
     } catch (e) {
-        showError('Ошибка при загрузке карточки');
-        console.error(e);
-        openBtn.disabled    = false;
-        openBtn.textContent = 'Открыть';
+        showError('Ошибка при загрузке карточки'); console.error(e);
+        openBtn.disabled = false; openBtn.textContent = 'Открыть';
     }
 }
 
@@ -258,7 +261,7 @@ function checkImageExists(cardNumber, lang) {
         const img   = new Image();
         img.onload  = () => resolve(true);
         img.onerror = () => {
-            const fb    = new Image();
+            const fb = new Image();
             fb.onload  = () => resolve(true);
             fb.onerror = () => resolve(false);
             fb.src = `cards/${fLang}/${cardNumber}.jpg`;
@@ -289,13 +292,13 @@ function showCardDialog() {
         cardImage.style.display = 'block';
 
         if (navigationContext) {
-            nav.style.display = 'flex';
+            nav.style.display     = 'flex';
             updateNavigationUI();
             actions.style.display = 'none';
         } else {
             nav.style.display = 'none';
             if (!isCardPlaced(currentCard)) {
-                actions.style.display = 'flex';
+                actions.style.display = 'grid';
             }
         }
     }).catch(() => {
@@ -361,13 +364,14 @@ function returnToCrate() {
 function isCardPlaced(cardNumber) {
     return state.rules.some(r => r.card === cardNumber)
         || state.history.some(h => h.card === cardNumber)
-        || state.minions.some(m => m.card === cardNumber);
+        || state.minions.some(m => m.card === cardNumber)
+        || state.goals.some(g => g.card === cardNumber);
 }
 
 function showPlacementDialog(type) {
-    placementType    = type;
-    const title      = document.getElementById('placementTitle');
-    const input      = document.getElementById('slotInput');
+    placementType = type;
+    const title   = document.getElementById('placementTitle');
+    const input   = document.getElementById('slotInput');
 
     if (type === 'rules') {
         title.textContent = 'Выберите правило (1-29)';
@@ -424,12 +428,13 @@ function placeCardInHistory(cardNumber, index) {
     if (idx !== -1) { state.history[idx].card = cardNumber; state.history[idx].new = true; saveState(); }
 }
 
-// Add card to minions list (no slot selection — always appends)
-function placeInMinions() {
+// Place card into a dynamic collection (minions or goals) — always appends
+function placeInDynamicCollection(collection) {
     if (!currentCard) return;
-    if (state.minions.some(m => m.card === currentCard)) return;
+    const list = state[collection];
+    if (list.some(item => item.card === currentCard)) return; // already there
     removeCardFromEverywhere(currentCard);
-    state.minions.push({ card: currentCard, new: true });
+    state[collection].push({ card: currentCard, new: true });
     saveState();
     closeCardDialog();
     renderCurrentTab();
@@ -442,8 +447,8 @@ function removeCardFromEverywhere(cardNumber) {
     state.history.forEach(h => {
         if (h.card === cardNumber) { h.card = null; delete h.new; }
     });
-    // Minions: remove entry entirely (dynamic list, no empty slots)
     state.minions = state.minions.filter(m => m.card !== cardNumber);
+    state.goals   = state.goals.filter(g => g.card !== cardNumber);
 }
 
 // ─── RENDER ───────────────────────────────────────────────────────────────────
@@ -464,32 +469,32 @@ function renderHistory() {
     );
 }
 
-function renderMinions() {
-    const container = document.getElementById('minionsList');
+function renderDynamicCollection(containerId, collection, navType) {
+    const container = document.getElementById(containerId);
     container.innerHTML = '';
 
-    if (!state.minions || state.minions.length === 0) {
-        const empty = document.createElement('p');
-        empty.className   = 'minions-empty';
-        empty.textContent = 'Нет открытых карточек миньонов';
+    if (!collection || collection.length === 0) {
+        const empty       = document.createElement('p');
+        empty.className   = 'misc-empty';
+        empty.textContent = 'Нет открытых карточек';
         container.appendChild(empty);
         return;
     }
 
-    state.minions.forEach((item, idx) => {
+    collection.forEach((item, idx) => {
         const slot = document.createElement('div');
         slot.className = 'slot' + (item.new ? ' new' : '');
 
-        const img   = document.createElement('img');
-        img.className     = 'slot-thumbnail';
-        img.src           = `cards/${language}/${item.card}.jpg`;
-        img.alt           = `Card ${item.card}`;
-        img.loading       = 'lazy';
+        const img     = document.createElement('img');
+        img.className = 'slot-thumbnail';
+        img.src       = `cards/${language}/${item.card}.jpg`;
+        img.alt       = `Card ${item.card}`;
+        img.loading   = 'lazy';
         slot.appendChild(img);
 
         slot.addEventListener('click', () => {
             currentCard       = item.card;
-            navigationContext = { type: 'minion', currentIndex: idx };
+            navigationContext = { type: navType, currentIndex: idx };
             showCardDialog();
         });
 
@@ -497,6 +502,15 @@ function renderMinions() {
     });
 }
 
+function renderMinions() {
+    renderDynamicCollection('minionsList', state.minions, 'minion');
+}
+
+function renderGoals() {
+    renderDynamicCollection('goalsList', state.goals, 'goal');
+}
+
+// Generic slot element (rules / history — fixed slots with possible empty state)
 function createSlotElement(number, cardNumber, type) {
     const slotData = type === 'rule'
         ? state.rules.find(r => r.ruleNumber === number)
@@ -543,15 +557,20 @@ function openCardWithNavigation(cardNumber, type, slotNumber) {
 
 function getNavList() {
     if (!navigationContext) return [];
-    if (navigationContext.type === 'rule')    return state.rules;
-    if (navigationContext.type === 'history') return state.history;
-    if (navigationContext.type === 'minion')  return state.minions;
-    return [];
+    switch (navigationContext.type) {
+        case 'rule':    return state.rules;
+        case 'history': return state.history;
+        case 'minion':  return state.minions;
+        case 'goal':    return state.goals;
+        default:        return [];
+    }
 }
 
+// Dynamic collections always have a card; fixed slots may be null
 function itemHasCard(item) {
-    // Minion entries always have a card; rule/history may be null
-    return item && (navigationContext.type === 'minion' || item.card !== null);
+    if (!item) return false;
+    const isDynamic = navigationContext.type === 'minion' || navigationContext.type === 'goal';
+    return isDynamic || item.card !== null;
 }
 
 function navigateToPrevCard() {
@@ -561,8 +580,7 @@ function navigateToPrevCard() {
         if (itemHasCard(list[i])) {
             navigationContext.currentIndex = i;
             currentCard = list[i].card;
-            reloadCardImage();
-            return;
+            reloadCardImage(); return;
         }
     }
 }
@@ -574,8 +592,7 @@ function navigateToNextCard() {
         if (itemHasCard(list[i])) {
             navigationContext.currentIndex = i;
             currentCard = list[i].card;
-            reloadCardImage();
-            return;
+            reloadCardImage(); return;
         }
     }
 }
@@ -594,23 +611,23 @@ function updateNavigationUI() {
     if (!navigationContext) return;
     const list    = getNavList();
     const current = list[navigationContext.currentIndex];
+    const idx     = navigationContext.currentIndex;
 
     let label;
-    if (navigationContext.type === 'rule') {
-        label = `Правило #${current.ruleNumber}`;
-    } else if (navigationContext.type === 'history') {
-        label = `История #${current.index}`;
-    } else {
-        label = `Миньон ${navigationContext.currentIndex + 1} из ${list.length}`;
+    switch (navigationContext.type) {
+        case 'rule':    label = `Правило #${current.ruleNumber}`;              break;
+        case 'history': label = `История #${current.index}`;                   break;
+        case 'minion':  label = `Миньон ${idx + 1} из ${list.length}`;        break;
+        case 'goal':    label = `Цель ${idx + 1} из ${list.length}`;          break;
     }
     document.getElementById('navInfo').textContent = label;
 
     let hasPrev = false;
-    for (let i = navigationContext.currentIndex - 1; i >= 0; i--) {
+    for (let i = idx - 1; i >= 0; i--) {
         if (itemHasCard(list[i])) { hasPrev = true; break; }
     }
     let hasNext = false;
-    for (let i = navigationContext.currentIndex + 1; i < list.length; i++) {
+    for (let i = idx + 1; i < list.length; i++) {
         if (itemHasCard(list[i])) { hasNext = true; break; }
     }
 
@@ -622,10 +639,10 @@ function updateNavigationUI() {
 
 function openCrate() {
     const crateId = document.getElementById('crateInput').value.trim().toUpperCase();
-    if (!crateId)      { showError('Введите номер ящика');          return; }
-    if (!cratesData)   { showError('Данные ящиков не загружены');   return; }
+    if (!crateId)    { showError('Введите номер ящика');        return; }
+    if (!cratesData) { showError('Данные ящиков не загружены'); return; }
     const content = cratesData[crateId];
-    if (!content)      { showError('Ящик не найден');               return; }
+    if (!content)    { showError('Ящик не найден');             return; }
     showCrateDialog(crateId, content);
 }
 
@@ -647,12 +664,12 @@ function showCrateDialog(crateId, crateContent) {
     const content      = document.getElementById('crateContent');
     const notification = document.getElementById('crateNotification');
 
-    title.textContent     = `Ящик ${crateId}`;
-    content.innerHTML     = '';
+    title.textContent          = `Ящик ${crateId}`;
+    content.innerHTML          = '';
     notification.style.display = 'none';
-    navigationStack       = null;
+    navigationStack            = null;
 
-    // Auto-place story cards
+    // Auto-place story cards into history
     if (crateContent.story && crateContent.story.length > 0) {
         const storyCards = [];
         crateContent.story.forEach(item => {
@@ -662,8 +679,8 @@ function showCrateDialog(crateId, crateContent) {
         if (storyCards.length > 0) {
             const result = placeStoryCards(storyCards);
             if (result.message) {
-                notification.textContent = result.message;
-                notification.className   = 'crate-notification ' + (result.placed > 0 ? 'success' : 'info');
+                notification.textContent   = result.message;
+                notification.className     = 'crate-notification ' + (result.placed > 0 ? 'success' : 'info');
                 notification.style.display = 'block';
             }
         }
@@ -697,8 +714,8 @@ function showCrateDialog(crateId, crateContent) {
             li.className   = 'crate-item';
             li.textContent = `- ${data.value}`;
             if (data.note) {
-                const n       = document.createElement('span');
-                n.className   = 'crate-item-note';
+                const n = document.createElement('span');
+                n.className = 'crate-item-note';
                 n.textContent = ` (${data.note})`;
                 li.appendChild(n);
             }
@@ -761,6 +778,8 @@ function findCardPlacement(cardNumber) {
     if (hist) return `История #${hist.index}`;
     const mIdx = state.minions.findIndex(m => m.card === cardNumber);
     if (mIdx !== -1) return `Миньон #${mIdx + 1}`;
+    const gIdx = state.goals.findIndex(g => g.card === cardNumber);
+    if (gIdx !== -1) return `Цель #${gIdx + 1}`;
     return null;
 }
 
@@ -833,6 +852,7 @@ async function importState(event) {
         if (!validateState(imported)) { showError('Неверная структура файла'); return; }
         state = imported;
         if (!state.minions) state.minions = [];
+        if (!state.goals)   state.goals   = [];
         saveState();
         renderCurrentTab();
         showError('Импорт выполнен успешно', false);
@@ -843,11 +863,12 @@ async function importState(event) {
 }
 
 function validateState(s) {
-    if (!s || typeof s !== 'object')                                  return false;
-    if (s.version !== undefined && typeof s.version !== 'number')     return false;
-    if (!Array.isArray(s.rules)   || s.rules.length   !== 29)        return false;
-    if (!Array.isArray(s.history) || s.history.length !== 18)        return false;
-    if (s.minions !== undefined   && !Array.isArray(s.minions))       return false;
+    if (!s || typeof s !== 'object')                              return false;
+    if (s.version !== undefined && typeof s.version !== 'number') return false;
+    if (!Array.isArray(s.rules)   || s.rules.length   !== 29)    return false;
+    if (!Array.isArray(s.history) || s.history.length !== 18)    return false;
+    if (s.minions !== undefined && !Array.isArray(s.minions))     return false;
+    if (s.goals   !== undefined && !Array.isArray(s.goals))       return false;
 
     for (const r of s.rules) {
         if (!r || typeof r.ruleNumber !== 'number'

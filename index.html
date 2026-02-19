@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <!-- Fixed header with controls -->
     <header class="header">
         <div class="controls">
             <div class="card-input-group">
@@ -26,14 +25,12 @@
             </div>
         </div>
 
-        <!-- Navigation tabs -->
         <nav class="tabs">
             <button class="tab-btn active" data-tab="rules">Правила</button>
             <button class="tab-btn" data-tab="history">История</button>
-            <a href="automa.pdf" class="tab-btn">Автома</a>
+            <button class="tab-btn" data-tab="misc">Разное</button>
         </nav>
 
-        <!-- Import/Export buttons -->
         <div class="io-controls">
             <div class="version-control">
                 <label for="versionInput">Версия:</label>
@@ -46,7 +43,6 @@
         </div>
     </header>
 
-    <!-- Main content area -->
     <main class="main-content">
         <!-- Rules tab -->
         <section id="rulesTab" class="tab-content active">
@@ -54,13 +50,19 @@
             <div id="rulesList" class="slots-list"></div>
         </section>
 
-        <!-- History tab — history slots + minions section below -->
+        <!-- History tab -->
         <section id="historyTab" class="tab-content">
             <h2>История (18)</h2>
             <div id="historyList" class="slots-list"></div>
+        </section>
 
-            <h2 class="minions-heading">Миньоны</h2>
-            <div id="minionsList" class="slots-list minions-list"></div>
+        <!-- Misc tab: Minions + Goals -->
+        <section id="miscTab" class="tab-content">
+            <h2>Миньоны</h2>
+            <div id="minionsList" class="slots-list"></div>
+
+            <h2 class="misc-section-heading">Цели</h2>
+            <div id="goalsList" class="slots-list"></div>
         </section>
     </main>
 
@@ -69,17 +71,14 @@
         <div class="dialog-content">
             <button class="close-btn" id="closeDialog">&times;</button>
 
-            <!-- Back to crate button (only visible when opened from crate) -->
             <button id="backToCrateBtn" class="back-btn" style="display: none;">← Назад к ящику</button>
 
-            <!-- Navigation slider (only visible when viewing from rules/history/minions) -->
             <div class="card-navigation" id="cardNavigation" style="display: none;">
                 <button class="nav-btn" id="prevCardBtn">‹</button>
                 <span class="nav-info" id="navInfo"></span>
                 <button class="nav-btn" id="nextCardBtn">›</button>
             </div>
 
-            <!-- Loading spinner -->
             <div class="loading-spinner" id="loadingSpinner" style="display: none;">
                 <div class="spinner"></div>
                 <p>Загрузка карточки...</p>
@@ -88,14 +87,15 @@
             <img id="cardImage" class="card-image" alt="Card" style="display: none;">
 
             <div class="dialog-actions" id="dialogActions">
-                <button id="placeInRulesBtn"   class="action-btn">Поставить в правило</button>
-                <button id="placeInHistoryBtn"  class="action-btn">Поставить в историю</button>
-                <button id="placeInMinionsBtn"  class="action-btn">Добавить в миньоны</button>
+                <button id="placeInRulesBtn"   class="action-btn">В правила</button>
+                <button id="placeInHistoryBtn"  class="action-btn">В историю</button>
+                <button id="placeInMinionsBtn"  class="action-btn">В миньоны</button>
+                <button id="placeInGoalsBtn"    class="action-btn">В цели</button>
             </div>
         </div>
     </dialog>
 
-    <!-- Placement dialog for rules / history -->
+    <!-- Placement dialog (rules / history only — misc collections auto-place) -->
     <dialog id="placementDialog" class="placement-dialog">
         <form id="placementForm" class="dialog-content">
             <h3 id="placementTitle">Выберите слот</h3>

@@ -196,10 +196,19 @@
       "card": null
     }
   ],
-    
   "minions": [
-    { "card": 227 },
-    { "card": 309 },
-    { "card": 332 }
-  ]
+    {
+      "card": 227,
+      "new": true
+    },
+    {
+      "card": 332,
+      "new": true
+    },
+    {
+      "card": 309,
+      "new": true
+    }
+  ],
+  "goals": []
 }
