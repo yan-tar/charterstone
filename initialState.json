@@ -1,9 +1,10 @@
 {
-  "version": 3,
+  "version": 4,
   "rules": [
     {
       "ruleNumber": 1,
-      "card": null
+      "card": 132,
+      "new": true
     },
     {
       "ruleNumber": 2,
@@ -36,8 +37,7 @@
     },
     {
       "ruleNumber": 9,
-      "card": 90,
-      "new": true
+      "card": 90
     },
     {
       "ruleNumber": 10,
@@ -148,12 +148,12 @@
     },
     {
       "index": 7,
-      "card": 129,
-      "new": true
+      "card": 129
     },
     {
       "index": 8,
-      "card": null
+      "card": 131,
+      "new": true
     },
     {
       "index": 9,
@@ -198,16 +198,13 @@
   ],
   "minions": [
     {
-      "card": 227,
-      "new": true
+      "card": 227
     },
     {
-      "card": 332,
-      "new": true
+      "card": 332
     },
     {
-      "card": 309,
-      "new": true
+      "card": 309
     }
   ],
   "goals": []
