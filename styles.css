@@ -1,6 +1,7 @@
 :root {
-    --border0: 2px solid #4CAF50;
+    --border0: 2px solid #57ad5a;
     --box-shadow0: 0 0 8px rgba(76, 175, 80, 0.5);
+    --border1: 2px solid #85f42a;
 }
 * {
     margin: 0;
@@ -256,9 +257,12 @@ input::placeholder {
     cursor: default;
 }
 
-.slot.new6 img {
+.slot.new0 img {
     border: var(--border0);
     box-shadow: var(--box-shadow0);
+}
+.slot.new1 img {
+    border: var(--border1);
 }
 
 .slot-number {
