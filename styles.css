@@ -33,7 +33,6 @@ body {
     align-items: center;
     gap: 12px;
     overflow-x: scroll;
-    display: none;
 }
 
 input::placeholder {
@@ -74,6 +73,7 @@ input::placeholder {
     display: flex;
     gap: 8px;
     flex: 0 0 auto;
+    display: none;
 }
 
 .crate-input-group input {
