@@ -32,6 +32,7 @@ body {
     justify-content: space-between;
     align-items: center;
     gap: 12px;
+    overflow-x: scroll;
 }
 
 input::placeholder {
@@ -128,6 +129,7 @@ input::placeholder {
     display: flex;
     gap: 8px;
     align-items: center;
+    overflow-x: scroll;
 }
 
 .tab-btn {

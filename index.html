@@ -29,18 +29,17 @@
             <button class="tab-btn active" data-tab="rules">Правила</button>
             <button class="tab-btn" data-tab="history">История</button>
             <button class="tab-btn" data-tab="misc">Разное</button>
-        </nav>
-
-        <div class="io-controls">
-            <div class="version-control">
-                <label for="versionInput">Версия:</label>
-                <input type="number" id="versionInput" min="1" value="1" autocomplete="off">
+            <div class="io-controls">
+                <div class="version-control">
+                    <label for="versionInput">Версия:</label>
+                    <input type="number" id="versionInput" min="1" value="1" autocomplete="off">
+                </div>
+                <button id="exportBtn">Экспорт</button>
+                <button id="importBtn">Импорт</button>
+                <button id="resetBtn" class="reset-btn" title="Сбросить до начального состояния">↻</button>
+                <input type="file" id="importFile" accept="application/json" style="display: none;">
             </div>
-            <button id="exportBtn">Экспорт</button>
-            <button id="importBtn">Импорт</button>
-            <button id="resetBtn" class="reset-btn" title="Сбросить до начального состояния">↻</button>
-            <input type="file" id="importFile" accept="application/json" style="display: none;">
-        </div>
+        </nav>
     </header>
 
     <main class="main-content">
