@@ -33,6 +33,7 @@ body {
     align-items: center;
     gap: 12px;
     overflow-x: scroll;
+    display: none;
 }
 
 input::placeholder {
