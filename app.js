@@ -518,7 +518,7 @@ function createSlotElement(number, cardNumber, type) {
 
     const slot = document.createElement('div');
     slot.className = cardNumber ? 'slot' : 'slot empty';
-    if (slotData && slotData.new === true) slot.classList.add('new');
+    if (slotData && slotData.new) slot.classList.add('new' + slotData.new);
 
     const numSpan       = document.createElement('span');
     numSpan.className   = 'slot-number';

@@ -1,3 +1,7 @@
+:root {
+    --border0: 2px solid #4CAF50;
+    --box-shadow0: 0 0 8px rgba(76, 175, 80, 0.5);
+}
 * {
     margin: 0;
     padding: 0;
@@ -73,7 +77,6 @@ input::placeholder {
     display: flex;
     gap: 8px;
     flex: 0 0 auto;
-    display: none;
 }
 
 .crate-input-group input {
@@ -253,9 +256,9 @@ input::placeholder {
     cursor: default;
 }
 
-.slot.new img {
-    border: 2px solid #4CAF50;
-    box-shadow: 0 0 8px rgba(76, 175, 80, 0.5);
+.slot.new6 img {
+    border: var(--border0);
+    box-shadow: var(--box-shadow0);
 }
 
 .slot-number {
