@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>125 комбинаций цифр 1-5</title>
+<style>
+  :root{
+    --bg:#0d1117; --panel:#141b24; --panel-border:#223042;
+    --text:#dce4ec; --text-dim:#7c8ba1; --accent:#4fd1c5; --accent-dim:#2a5a56;
+    --warn:#e08a5a;
+  }
+  *{ box-sizing:border-box; }
+  body{ margin:0; background:var(--bg); color:var(--text); font-family:'Inter',-apple-system,sans-serif; }
+  .mono{ font-family:'JetBrains Mono','Space Mono',monospace; }
+  header{ padding:24px 24px 14px; border-bottom:1px solid var(--panel-border); }
+  header h1{ margin:0 0 6px; font-size:20px; }
+  header p{ margin:0; color:var(--text-dim); font-size:13px; }
+
+  .toolbar{
+    position:sticky; top:0; z-index:5; background:var(--bg);
+    padding:12px 24px; border-bottom:1px solid var(--panel-border);
+    display:flex; align-items:center; justify-content:space-between; gap:10px; flex-wrap:wrap;
+  }
+  .counter{ font-size:13px; color:var(--text-dim); }
+  .counter .value{ color:var(--accent); font-weight:700; font-size:15px; }
+  .btn{
+    background:transparent; border:1px solid var(--panel-border); color:var(--text);
+    padding:6px 12px; border-radius:6px; font-size:12px; cursor:pointer;
+  }
+  .btn:hover{ border-color:var(--accent); color:var(--accent); }
+
+  .layout{ display:grid; grid-template-columns:380px 1fr; gap:0; align-items:start; }
+  @media (max-width:900px){ .layout{ grid-template-columns:1fr; } }
+
+  .filters-panel{
+    border-right:1px solid var(--panel-border);
+    max-height:calc(100vh - 78px); overflow-y:auto; padding:14px 16px 60px;
+  }
+  .filters-panel::-webkit-scrollbar{ width:8px; }
+  .filters-panel::-webkit-scrollbar-thumb{ background:var(--panel-border); border-radius:4px; }
+
+  .legend{
+    font-size:11.5px; color:var(--text-dim); margin-bottom:12px; padding:8px 10px;
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
+  }
+  .pos-icon{ font-weight:700; margin:0 2px; font-size: 2em;}
+  .pos-first{ color:#4fa8e0; }
+  .pos-second{ color:#e0c040; }
+  .pos-third{ color:#a374e0; }
+
+  .card-lookup{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
+    padding:10px 12px; margin-bottom:14px;
+  }
+  .card-lookup label{ font-size:12px; color:var(--text-dim); display:block; }
+  .card-lookup input[type=text]{
+    width:100%; background:#0f151d; color:var(--text); border:1px solid var(--panel-border);
+    border-radius:6px; padding:6px 8px; font-size:12.5px; margin-top:6px;
+  }
+  .card-view{ margin-top:10px; }
+  .card-box{
+    background:#0f151d; border:1px solid var(--panel-border); border-radius:8px;
+    padding:10px 12px; margin-bottom:10px;
+  }
+  .card-box-head{ display:flex; align-items:center; justify-content:space-between; margin-bottom:8px; font-size:13px; }
+  .card-box-head .btn{ font-size:11px; padding:4px 8px; }
+  .card-empty{ color:var(--text-dim); font-style:italic; font-size:12px; }
+
+  .assign-wrap{ display:flex; align-items:center; gap:4px; flex:none; }
+  .assign-wrap span{ font-size:10.5px; color:var(--text-dim); }
+  .assign-input{
+    width:56px; background:#0f151d; color:var(--text-dim); border:1px solid var(--panel-border);
+    border-radius:5px; font-size:11px; padding:2px 4px;
+  }
+
+  details.group{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
+    margin-bottom:10px; overflow:hidden;
+  }
+  details.group summary{
+    cursor:pointer; padding:10px 12px; font-size:13px; font-weight:600;
+    list-style:none; display:flex; justify-content:space-between; align-items:center;
+  }
+  details.group summary::-webkit-details-marker{ display:none; }
+  details.group summary .arrow{ color:var(--text-dim); font-size:11px; transition:transform .15s; }
+  details.group[open] summary .arrow{ transform:rotate(90deg); }
+  .group-body{ padding:0 12px 10px; }
+
+  .filter-item{ margin-bottom:12px; padding-top:8px; border-top:1px solid var(--panel-border); }
+  .filter-item:first-child{ border-top:none; padding-top:0; }
+  .filter-head{ display:flex; align-items:flex-start; justify-content:space-between; gap:6px; margin-bottom:6px; flex-wrap:wrap; }
+  .filter-head label{ font-size:12px; color:var(--text-dim); line-height:1.35; flex:1 1 auto; min-width:120px; }
+  .filter-clear{
+    flex:none; background:transparent; border:1px solid var(--panel-border); color:var(--text-dim);
+    font-size:11px; line-height:1; padding:2px 6px; border-radius:5px; cursor:pointer; white-space:nowrap;
+  }
+  .filter-clear:hover{ border-color:var(--accent); color:var(--accent); }
+
+  .chips{ display:flex; flex-wrap:wrap; gap:6px; }
+  .chip{
+    display:inline-flex; align-items:center; gap:5px; padding:6px 10px; border-radius:16px;
+    border:1px solid var(--panel-border); background:#0f151d; font-size:12px; cursor:pointer;
+    user-select:none; -webkit-tap-highlight-color:transparent;
+  }
+  .chip input{ display:none; }
+  .chip.checked{ border-color:var(--accent); background:var(--accent-dim); color:#eafffb; }
+
+  .side-panels{ padding-top:4px; }
+  .side-panel{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
+    padding:10px 12px; margin-bottom:10px;
+  }
+  .side-panel h3{ margin:0 0 6px; font-size:12.5px; display:flex; justify-content:space-between; align-items:center; }
+  .side-panel h3 .count{ color:var(--accent); }
+  .side-panel .list{ font-size:12px; color:var(--text-dim); max-height:110px; overflow-y:auto; line-height:1.6; }
+  .side-panel .empty{ color:var(--text-dim); font-style:italic; }
+  .manual-chip{
+    display:inline-flex; align-items:center; gap:5px; background:#1c1418; border:1px solid #4a2a2a;
+    color:#f0c9c9; padding:2px 6px; border-radius:5px; margin:2px 3px 2px 0; font-size:12px;
+  }
+  .manual-chip button{ background:none; border:none; color:#f0c9c9; cursor:pointer; font-size:12px; padding:0; line-height:1; }
+
+  .grid-wrap{ padding:16px 24px 30px; }
+  .grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(64px,1fr)); gap:8px; }
+  .cell{
+    display:flex; align-items:center; justify-content:center; padding:10px 0; border-radius:7px;
+    font-size:15px; font-weight:600; background:#131a23; border:1px solid #1e2733; color:var(--text);
+    cursor:pointer; transition:opacity .15s ease;
+  }
+  .cell:hover{ border-color:var(--warn); }
+  .cell.hidden{ display:none; }
+  .cell.manual-hidden{ display:none; }
+
+  .below-grid{ padding:0 24px 40px; }
+  .delta-panel{
+    background:var(--panel); border:1px solid var(--panel-border); border-radius:8px; padding:14px 18px;
+  }
+  .delta-panel h3{ margin:0 0 10px; font-size:13.5px; }
+  .delta-panel .row{ margin-bottom:8px; font-size:12.5px; line-height:1.6; }
+  .delta-panel .row .label{ color:var(--text-dim); margin-right:6px; }
+  .delta-panel .empty{ color:var(--text-dim); font-style:italic; }
+  .hide-new{ color:#e08a5a; }
+  .show-new{ color:var(--accent); }
+
+  footer{ color:var(--text-dim); font-size:11px; padding:0 24px 30px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Все трёхзначные комбинации цифр 1-5</h1>
+  <p>125 вариантов (повторения разрешены). Отмечайте чекбоксы, чтобы скрывать числа по критериям. Клик по числу в сетке — исключить его вручную.</p>
+</header>
+
+<div class="toolbar">
+  <div class="counter">Показано: <span class="value" id="visibleCount">125</span> из 125</div>
+  <div style="display:flex; gap:8px;">
+    <button class="btn" id="resetFiltersBtn">Сбросить фильтры</button>
+    <button class="btn" id="resetManualBtn">Вернуть исключённые вручную</button>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="filters-panel">
+    <div class="legend" id="legend"></div>
+
+    <div class="card-lookup">
+      <label>Показать фильтры по номеру(ам) карточки (через запятую, 1–12):</label>
+      <input type="text" id="cardInput" placeholder="например: 1,3,5">
+      <div class="card-view" id="cardView"></div>
+    </div>
+
+    <div id="groupsContainer"></div>
+
+    <div class="side-panels">
+      <div class="side-panel">
+        <h3>Исключено вручную <span class="count" id="manualCount">0</span></h3>
+        <div class="list" id="manualList"><span class="empty">пока ничего не исключено</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="grid-wrap">
+    <div class="grid" id="grid"></div>
+  </div>
+</div>
+
+<div class="below-grid">
+  <div class="delta-panel">
+    <h3>Изменения от последнего действия с фильтром</h3>
+    <div class="row"><span class="label hide-new">Скрыто этим действием:</span><span id="deltaHiddenList" class="mono"></span></div>
+    <div class="row"><span class="label show-new">Показано этим действием:</span><span id="deltaShownList" class="mono"></span></div>
+  </div>
+</div>
+
+<footer>Число скрывается из сетки, если попадает под активный фильтр ИЛИ исключено вручную. Панель внизу показывает не весь список скрытых чисел, а только то, что изменилось от последнего вашего клика по фильтру — с учётом уже применённых остальных фильтров.</footer>
+
+<script>
+// ---------- Position icons ----------
+const POS = {
+  first:  '<span class="pos-icon pos-first" title="первая цифра">&#9650;</span>',
+  second: '<span class="pos-icon pos-second" title="вторая цифра">&#9632;</span>',
+  third:  '<span class="pos-icon pos-third" title="третья цифра">&#9679;</span>',
+};
+
+// ---------- Helpers ----------
+function cmp(value, threshold) {
+  if (value < threshold) return 'lt';
+  if (value === threshold) return 'eq';
+  return 'gt';
+}
+function countDigit(digits, digit) { return digits.filter(d => d === digit).length; }
+function countLabel(count) { return ['none','one','two','three'][count]; }
+
+// ---------- Criteria definitions (compute returns array of matched option values) ----------
+const criteria = [
+  { title:`1. ${POS.first} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
+    compute:(d1,d2,d3)=>[cmp(d1,3)] },
+  { title:`2. ${POS.second} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
+    compute:(d1,d2,d3)=>[cmp(d2,3)] },
+  { title:`3. ${POS.third} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
+    compute:(d1,d2,d3)=>[cmp(d3,3)] },
+  { title:`4. ${POS.second} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
+    compute:(d1,d2,d3)=>[cmp(d2,4)] },
+  { title:`5. ${POS.first} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
+    compute:(d1,d2,d3)=>[cmp(d1,4)] },
+  { title:`6. ${POS.third} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
+    compute:(d1,d2,d3)=>[cmp(d3,4)] },
+
+  { title:'7. Количество единиц в числе', options:[{v:'none',l:'нет'},{v:'one',l:'одна'},{v:'two',l:'две'},{v:'three',l:'три'}],
+    compute:(d1,d2,d3)=>[countLabel(countDigit([d1,d2,d3],1))] },
+  { title:'8. Количество троек в числе', options:[{v:'none',l:'нет'},{v:'one',l:'одна'},{v:'two',l:'две'},{v:'three',l:'три'}],
+    compute:(d1,d2,d3)=>[countLabel(countDigit([d1,d2,d3],3))] },
+  { title:'9. Количество четвёрок в числе', options:[{v:'none',l:'нет'},{v:'one',l:'одна'},{v:'two',l:'две'},{v:'three',l:'три'}],
+    compute:(d1,d2,d3)=>[countLabel(countDigit([d1,d2,d3],4))] },
+  { title:'16. Количество чётных цифр в числе', options:[{v:'none',l:'нет'},{v:'one',l:'одна'},{v:'two',l:'две'},{v:'three',l:'три'}],
+    compute:(d1,d2,d3)=>[countLabel([d1,d2,d3].filter(d=>d%2===0).length)] },
+
+  { title:`10. ${POS.first} относительно ${POS.second}`, options:[{v:'lt',l:'меньше'},{v:'eq',l:'равна'},{v:'gt',l:'больше'}],
+    compute:(d1,d2,d3)=>[cmp(d1,d2)] },
+  { title:`11. ${POS.first} относительно ${POS.third}`, options:[{v:'lt',l:'меньше'},{v:'eq',l:'равна'},{v:'gt',l:'больше'}],
+    compute:(d1,d2,d3)=>[cmp(d1,d3)] },
+  { title:`12. ${POS.second} относительно ${POS.third}`, options:[{v:'lt',l:'меньше'},{v:'eq',l:'равна'},{v:'gt',l:'больше'}],
+    compute:(d1,d2,d3)=>[cmp(d2,d3)] },
+
+  { title:'13. Какая цифра наименьшая (при равенстве — обе)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{ const m=Math.min(d1,d2,d3); const r=[]; if(d1===m)r.push('first'); if(d2===m)r.push('second'); if(d3===m)r.push('third'); return r; } },
+  { title:'14. Какая цифра наибольшая (при равенстве — обе)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{ const m=Math.max(d1,d2,d3); const r=[]; if(d1===m)r.push('first'); if(d2===m)r.push('second'); if(d3===m)r.push('third'); return r; } },
+  { title:'27. Позиция "цифры-меньшинства" (когда две цифры совпадают, а одна другая)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third},{v:'none',l:'нет меньшинства'}],
+    compute:(d1,d2,d3)=>{
+      const digits=[d1,d2,d3]; const names=['first','second','third']; const counts={};
+      digits.forEach(d=>counts[d]=(counts[d]||0)+1);
+      const values=Object.keys(counts).map(Number);
+      const hasPair=values.some(v=>counts[v]===2), hasSingle=values.some(v=>counts[v]===1);
+      if(!(hasPair&&hasSingle)) return ['none'];
+      const minorityValue=values.find(v=>counts[v]===1);
+      return [names[digits.findIndex(d=>d===minorityValue)]];
+    } },
+
+  { title:'15. Чего больше — чётных или нечётных цифр', options:[{v:'even_more',l:'чётных больше'},{v:'odd_more',l:'нечётных больше'}],
+    compute:(d1,d2,d3)=>{ const e=[d1,d2,d3].filter(d=>d%2===0).length; return [e>1?'even_more':'odd_more']; } },
+  { title:'17. Чётность суммы всех цифр', options:[{v:'even',l:'чётная'},{v:'odd',l:'нечётная'}],
+    compute:(d1,d2,d3)=>[(d1+d2+d3)%2===0?'even':'odd'] },
+  { title:'26. Чётность цифр по позициям', options:[{v:'first',l:POS.first+' чётная'},{v:'second',l:POS.second+' чётная'},{v:'third',l:POS.third+' чётная'}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2===0)r.push('first'); if(d2%2===0)r.push('second'); if(d3%2===0)r.push('third'); return r; } },
+
+  { title:`18. Сумма ${POS.first}+${POS.second} относительно 6`, options:[{v:'lt',l:'меньше 6'},{v:'eq',l:'равна 6'},{v:'gt',l:'больше 6'}],
+    compute:(d1,d2,d3)=>[cmp(d1+d2,6)] },
+  { title:`21. Сумма ${POS.first}+${POS.second}+${POS.third} относительно 6`, options:[{v:'lt',l:'меньше 6'},{v:'eq',l:'равна 6'},{v:'gt',l:'больше 6'}],
+    compute:(d1,d2,d3)=>[cmp(d1+d2+d3,6)] },
+  { title:`28. Сумма ${POS.first}+${POS.second}+${POS.third} кратна`, options:[{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}],
+    compute:(d1,d2,d3)=>{ const s=d1+d2+d3; const r=[]; if(s%3===0)r.push('3'); if(s%4===0)r.push('4'); if(s%5===0)r.push('5'); return r; } },
+  { title:'29. Сумма какой пары цифр равна 4', options:[{v:'first_second',l:POS.first+'+'+POS.second},{v:'second_third',l:POS.second+'+'+POS.third},{v:'first_third',l:POS.first+'+'+POS.third}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1+d2===4)r.push('first_second'); if(d2+d3===4)r.push('second_third'); if(d1+d3===4)r.push('first_third'); return r; } },
+  { title:'30. Сумма какой пары цифр равна 6', options:[{v:'first_second',l:POS.first+'+'+POS.second},{v:'second_third',l:POS.second+'+'+POS.third},{v:'first_third',l:POS.first+'+'+POS.third}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1+d2===6)r.push('first_second'); if(d2+d3===6)r.push('second_third'); if(d1+d3===6)r.push('first_third'); return r; } },
+
+  { title:'19. Повтор одной и той же цифры в числе', options:[{v:'triple',l:'трижды'},{v:'double',l:'дважды'},{v:'none',l:'не повторяется'}],
+    compute:(d1,d2,d3)=>{ if(d1===d2&&d2===d3)return['triple']; if(d1===d2||d2===d3||d1===d3)return['double']; return['none']; } },
+  { title:'20. Порядок расположения цифр', options:[{v:'asc',l:'по возрастанию'},{v:'desc',l:'по убыванию'},{v:'none',l:'без порядка'}],
+    compute:(d1,d2,d3)=>{ if(d1<d2&&d2<d3)return['asc']; if(d1>d2&&d2>d3)return['desc']; return['none']; } },
+  { title:'22. Подряд идущая возрастающая последовательность (напр. 123)', options:[{v:'three',l:'три подряд'},{v:'two',l:'две подряд'},{v:'none',l:'нет'}],
+    compute:(d1,d2,d3)=>{ const p1=d2===d1+1,p2=d3===d2+1; if(p1&&p2)return['three']; if(p1||p2)return['two']; return['none']; } },
+  { title:'23. Подряд идущая убывающая последовательность (напр. 543)', options:[{v:'three',l:'три подряд'},{v:'two',l:'две подряд'},{v:'none',l:'нет'}],
+    compute:(d1,d2,d3)=>{ const p1=d2===d1-1,p2=d3===d2-1; if(p1&&p2)return['three']; if(p1||p2)return['two']; return['none']; } },
+
+  { title:'24. На какой позиции стоит цифра 1', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1===1)r.push('first'); if(d2===1)r.push('second'); if(d3===1)r.push('third'); return r; } },
+  { title:'25. На какой позиции цифра больше 1', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1>1)r.push('first'); if(d2>1)r.push('second'); if(d3>1)r.push('third'); return r; } },
+];
+
+
+// map each criterion by its title's leading number to a group
+function critIndexByNumber(num) {
+  return criteria.findIndex(c => c.title.startsWith(num + '.'));
+}
+const groups = [
+  { title:'Сравнение цифр с порогами 3 и 4', nums:[1,2,3,4,5,6] },
+  { title:'Количество цифр данного вида', nums:[7,8,9,16] },
+  { title:'Сравнение цифр между собой', nums:[10,11,12] },
+  { title:'Позиция минимума / максимума / "меньшинства"', nums:[13,14,27] },
+  { title:'Чётность', nums:[15,17,26] },
+  { title:'Суммы цифр', nums:[18,21,28,29,30] },
+  { title:'Повторения и последовательности', nums:[19,20,22,23] },
+  { title:'Позиция конкретных цифр (1 и >1)', nums:[24,25] },
+].map(g => ({ title:g.title, idxs: g.nums.map(critIndexByNumber) }));
+
+// ---------- Build all 125 numbers with precomputed categories ----------
+const numbers = [];
+for (let d1=1; d1<=5; d1++)
+  for (let d2=1; d2<=5; d2++)
+    for (let d3=1; d3<=5; d3++) {
+      const cats = criteria.map(c => c.compute(d1,d2,d3));
+      numbers.push({ value:`${d1}${d2}${d3}`, cats });
+    }
+
+// ---------- Shared filter state (single source of truth for all rendered copies of a filter) ----------
+const selectedState = criteria.map(() => new Set());
+const checkboxRegistry = criteria.map(() => []); // {input, chip, scope}
+// Hardcode card membership here: criterion number (as in its title, 1-30) -> array of card numbers.
+// Any criterion not listed gets an empty set (belongs to no card by default).
+const CARD_ASSIGNMENTS_BY_NUMBER = {
+  1: [24,25], //todo
+  2: [1],
+  3: [2],
+  4: [3],
+  5: [26],
+  6: [26],
+  7: [26],
+  8: [7],
+  9: [8],
+  10: [9],
+  11: [10], 
+  12: [11],
+  13: [12],
+  14: [13],
+  15: [14],
+  16: [15],
+  17: [16],
+  18: [17],
+  19: [18],
+  20: [19],
+  21: [19],
+  22: [20],
+  23: [21],
+  24: [22],
+  25: [22,23],
+  26: [1, 2, 3],
+  27: [4, 5, 6],
+  28: [24],
+  29: [1, 2, 3],
+  30: [4, 5, 6],
+  31: [25],
+  32: [1, 2, 3],
+  33: [26],// todo?
+  34: [13],
+  35: [14],
+  36: [28],
+  37: [29],
+  38: [30],
+  39: [24, 25],
+  40: [1,2,3],
+  41: [4, 5,6],
+  42: [13, 14],
+  43: [10, 11],
+  44: [10, 12],
+  45: [7, 8],
+  46: [8,9],
+  47: [7,9],
+  48: [10,11,12]
+};
+const cardAssignments = criteria.map(c => {
+  const num = parseInt(c.title.split('.')[0], 10);
+  const nums = CARD_ASSIGNMENTS_BY_NUMBER[num] || [];
+  return new Set(nums);
+});
+const cardHiddenOverrides = new Set(); // "cardNum:idx" manually hidden from a card's view
+const manuallyExcluded = new Set();
+
+function registerCheckbox(idx, input, chip, scope) { checkboxRegistry[idx].push({ input, chip, scope }); }
+function clearScope(scope) {
+  checkboxRegistry.forEach(list => {
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].scope === scope) list.splice(i, 1);
+  });
+}
+function syncCheckboxes(idx) {
+  checkboxRegistry[idx].forEach(({ input, chip }) => {
+    const checked = selectedState[idx].has(input.value);
+    input.checked = checked;
+    chip.classList.toggle('checked', checked);
+  });
+}
+
+// ---------- Compute the set of numbers currently hidden by filters ----------
+function computeFilteredHiddenSet() {
+  const hidden = new Set();
+  numbers.forEach(n => {
+    for (let c = 0; c < criteria.length; c++) {
+      const sel = selectedState[c];
+      if (sel.size === 0) continue;
+      if (n.cats[c].some(cat => sel.has(cat))) { hidden.add(n.value); break; }
+    }
+  });
+  return hidden;
+}
+
+function toggleFilter(idx, value) {
+  const prevHidden = computeFilteredHiddenSet();
+
+  if (selectedState[idx].has(value)) selectedState[idx].delete(value);
+  else selectedState[idx].add(value);
+  syncCheckboxes(idx);
+
+  const newHidden = computeFilteredHiddenSet();
+  const newlyHidden = [...newHidden].filter(v => !prevHidden.has(v));
+  const newlyShown = [...prevHidden].filter(v => !newHidden.has(v));
+
+  renderDelta(newlyHidden, newlyShown);
+  updateGrid();
+}
+
+function clearFilter(idx) {
+  const prevHidden = computeFilteredHiddenSet();
+  selectedState[idx].clear();
+  syncCheckboxes(idx);
+  const newHidden = computeFilteredHiddenSet();
+  const newlyHidden = [...newHidden].filter(v => !prevHidden.has(v));
+  const newlyShown = [...prevHidden].filter(v => !newHidden.has(v));
+  renderDelta(newlyHidden, newlyShown);
+  updateGrid();
+}
+
+// ---------- Build a chip (checkbox) for a given criterion option, usable in multiple render scopes ----------
+function buildChip(idx, opt, scope) {
+  const chip = document.createElement('label');
+  chip.className = 'chip';
+  const input = document.createElement('input');
+  input.type = 'checkbox';
+  input.value = opt.v;
+  input.checked = selectedState[idx].has(opt.v);
+  if (input.checked) chip.classList.add('checked');
+  input.addEventListener('change', () => toggleFilter(idx, opt.v));
+  chip.appendChild(input);
+  chip.insertAdjacentHTML('beforeend', opt.l);
+  registerCheckbox(idx, input, chip, scope);
+  return chip;
+}
+
+// ---------- Build a full filter-item block (title + clear button + chips [+ extra control]) ----------
+function buildFilterItem(idx, scope, extraControl) {
+  const c = criteria[idx];
+  const item = document.createElement('div');
+  item.className = 'filter-item';
+
+  const head = document.createElement('div');
+  head.className = 'filter-head';
+  const label = document.createElement('label');
+  label.innerHTML = c.title;
+  head.appendChild(label);
+
+  const clearBtn = document.createElement('button');
+  clearBtn.className = 'filter-clear';
+  clearBtn.type = 'button';
+  clearBtn.title = 'Сбросить этот фильтр';
+  clearBtn.textContent = '×';
+  clearBtn.addEventListener('click', () => clearFilter(idx));
+  head.appendChild(clearBtn);
+
+  // if (scope === 'accordion') {
+  //   // inline control to assign this filter to one or several cards
+  //   const assignWrap = document.createElement('div');
+  //   assignWrap.className = 'assign-wrap';
+  //   const assignLabel = document.createElement('span');
+  //   assignLabel.textContent = 'карточки:';
+  //   const assignInput = document.createElement('input');
+  //   assignInput.type = 'text';
+  //   assignInput.className = 'assign-input';
+  //   assignInput.placeholder = '1,3';
+  //   assignInput.value = Array.from(cardAssignments[idx]).sort((a,b)=>a-b).join(',');
+  //   assignInput.addEventListener('change', () => {
+  //     const nums = assignInput.value.split(',')
+  //       .map(s => parseInt(s.trim(), 10))
+  //       .filter(n => !isNaN(n) && n >= 1 && n <= 12);
+  //     cardAssignments[idx] = new Set(nums);
+  //     renderCardView();
+  //   });
+  //   assignWrap.appendChild(assignLabel);
+  //   assignWrap.appendChild(assignInput);
+  //   head.appendChild(assignWrap);
+  // }
+
+  if (extraControl) head.appendChild(extraControl);
+
+  item.appendChild(head);
+
+  const chips = document.createElement('div');
+  chips.className = 'chips';
+  c.options.forEach(opt => chips.appendChild(buildChip(idx, opt, scope)));
+  item.appendChild(chips);
+
+  return item;
+}
+
+// ---------- Render thematic accordion groups ----------
+const groupsContainer = document.getElementById('groupsContainer');
+groups.forEach((g, gi) => {
+  const details = document.createElement('details');
+  details.className = 'group';
+  if (gi === 0) details.open = true;
+
+  const summary = document.createElement('summary');
+  summary.innerHTML = `<span>${g.title}</span><span class="arrow">&#9656;</span>`;
+  details.appendChild(summary);
+
+  const body = document.createElement('div');
+  body.className = 'group-body';
+  g.idxs.forEach(idx => body.appendChild(buildFilterItem(idx, 'accordion')));
+  details.appendChild(body);
+
+  groupsContainer.appendChild(details);
+});
+
+// ---------- Card lookup view ----------
+const cardInput = document.getElementById('cardInput');
+const cardView = document.getElementById('cardView');
+
+function renderCardView() {
+  clearScope('card');
+  cardView.innerHTML = '';
+
+  const raw = cardInput.value.trim();
+  if (!raw) {
+    cardView.innerHTML = '<div class="card-empty">Номера карт критериев:</div>';
+    return;
+  }
+
+  const cardNums = [...new Set(
+    raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 48)
+  )];
+  if (cardNums.length === 0) {
+    cardView.innerHTML = '<div class="card-empty">Некорректный номер карточки (используйте 1–48)</div>';
+    return;
+  }
+
+  cardNums.forEach(num => {
+    const box = document.createElement('div');
+    box.className = 'card-box';
+
+    const headRow = document.createElement('div');
+    headRow.className = 'card-box-head';
+    const titleEl = document.createElement('strong');
+    titleEl.textContent = `Карточка ${num}`;
+    headRow.appendChild(titleEl);
+
+    const restoreBtn = document.createElement('button');
+    restoreBtn.className = 'btn';
+    restoreBtn.textContent = 'Показать скрытые фильтры';
+    restoreBtn.addEventListener('click', () => {
+      Array.from(cardHiddenOverrides).forEach(key => {
+        if (key.startsWith(num + ':')) cardHiddenOverrides.delete(key);
+      });
+      renderCardView();
+    });
+    headRow.appendChild(restoreBtn);
+    box.appendChild(headRow);
+
+    const matched = criteria
+      .map((c, idx) => idx)
+      .filter(idx => cardAssignments[idx].has(num) && !cardHiddenOverrides.has(num + ':' + idx));
+
+    if (matched.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'card-empty';
+      empty.textContent = 'Нет фильтров, назначенных этой карточке (назначьте их полем "карточки:" ниже, в общем списке фильтров)';
+      box.appendChild(empty);
+    } else {
+      matched.forEach(idx => {
+        const hideBtn = document.createElement('button');
+        hideBtn.className = 'filter-clear';
+        hideBtn.type = 'button';
+        hideBtn.title = 'Скрыть этот фильтр из карточки ' + num;
+        hideBtn.textContent = 'скрыть из карточки';
+        hideBtn.addEventListener('click', () => {
+          cardHiddenOverrides.add(num + ':' + idx);
+          renderCardView();
+        });
+        box.appendChild(buildFilterItem(idx, 'card', hideBtn));
+      });
+    }
+
+    cardView.appendChild(box);
+  });
+}
+cardInput.addEventListener('input', renderCardView);
+renderCardView();
+
+// ---------- Render the number grid ----------
+const grid = document.getElementById('grid');
+const cellElements = numbers.map(n => {
+  const cell = document.createElement('div');
+  cell.className = 'cell mono';
+  cell.textContent = n.value;
+  cell.title = 'Клик — исключить вручную';
+  cell.addEventListener('click', () => {
+    if (manuallyExcluded.has(n.value)) manuallyExcluded.delete(n.value);
+    else manuallyExcluded.add(n.value);
+    updateGrid();
+  });
+  grid.appendChild(cell);
+  return cell;
+});
+
+// ---------- Grid visibility + manual-exclusion panel ----------
+const visibleCountEl = document.getElementById('visibleCount');
+const manualCountEl = document.getElementById('manualCount');
+const manualListEl = document.getElementById('manualList');
+
+function updateGrid() {
+  const hiddenByFilterSet = computeFilteredHiddenSet();
+  let visible = 0;
+
+  numbers.forEach((n, i) => {
+    const hiddenByFilter = hiddenByFilterSet.has(n.value);
+    const hiddenManually = manuallyExcluded.has(n.value);
+    cellElements[i].classList.toggle('hidden', hiddenByFilter);
+    cellElements[i].classList.toggle('manual-hidden', hiddenManually);
+    if (!hiddenByFilter && !hiddenManually) visible++;
+  });
+
+  visibleCountEl.textContent = visible;
+
+  const manualArr = Array.from(manuallyExcluded);
+  manualCountEl.textContent = manualArr.length;
+  manualListEl.innerHTML = '';
+  if (manualArr.length === 0) {
+    manualListEl.innerHTML = '<span class="empty">пока ничего не исключено</span>';
+  } else {
+    manualArr.forEach(val => {
+      const chip = document.createElement('span');
+      chip.className = 'manual-chip mono';
+      chip.textContent = val + ' ';
+      const btn = document.createElement('button');
+      btn.textContent = '×';
+      btn.title = 'Вернуть число';
+      btn.addEventListener('click', () => { manuallyExcluded.delete(val); updateGrid(); });
+      chip.appendChild(btn);
+      manualListEl.appendChild(chip);
+    });
+  }
+}
+
+// ---------- Delta panel (below the grid): only what changed from the last filter action ----------
+const deltaHiddenList = document.getElementById('deltaHiddenList');
+const deltaShownList = document.getElementById('deltaShownList');
+
+function renderDelta(newlyHidden, newlyShown) {
+  deltaHiddenList.textContent = newlyHidden.length ? newlyHidden.join(', ') : '— (это действие ничего не скрыло)';
+  deltaShownList.textContent = newlyShown.length ? newlyShown.join(', ') : '— (это действие ничего не вернуло)';
+}
+renderDelta([], []);
+
+// ---------- Global reset buttons ----------
+document.getElementById('resetFiltersBtn').addEventListener('click', () => {
+  const prevHidden = computeFilteredHiddenSet();
+  selectedState.forEach((set, idx) => { set.clear(); syncCheckboxes(idx); });
+  const newHidden = computeFilteredHiddenSet();
+  renderDelta([...newHidden].filter(v => !prevHidden.has(v)), [...prevHidden].filter(v => !newHidden.has(v)));
+  updateGrid();
+});
+
+document.getElementById('resetManualBtn').addEventListener('click', () => {
+  manuallyExcluded.clear();
+  updateGrid();
+});
+
+updateGrid();
+</script>
+
+</body>
+</html>
