@@ -44,10 +44,10 @@
     font-size:11.5px; color:var(--text-dim); margin-bottom:12px; padding:8px 10px;
     background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
   }
-  .pos-icon{ font-weight:700; margin:0 2px; font-size: 2em;}
+  .pos-icon{ font-weight:700; margin:0 2px; font-size: 2em;position: relative;top: 0.2em;line-height: 1;}
   .pos-first{ color:#4fa8e0; }
-  .pos-second{ color:#e0c040; }
-  .pos-third{ color:#a374e0; }
+  .pos-second{ color:#e0c040; font-size: 4em;top: 0.1em;}
+  .pos-third{ color:#a374e0; font-size: 5em;}
 
   .card-lookup{
     background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
@@ -166,7 +166,7 @@
     <div class="legend" id="legend"></div>
 
     <div class="card-lookup">
-      <label>Показать фильтры по номеру(ам) карточки (через запятую, 1–12):</label>
+      <label>Показать фильтры по номеру(ам) карточки (через запятую):</label>
       <input type="text" id="cardInput" placeholder="например: 1,3,5">
       <div class="card-view" id="cardView"></div>
     </div>
@@ -244,19 +244,32 @@ const criteria = [
   { title:`12. ${POS.second} относительно ${POS.third}`, options:[{v:'lt',l:'меньше'},{v:'eq',l:'равна'},{v:'gt',l:'больше'}],
     compute:(d1,d2,d3)=>[cmp(d2,d3)] },
 
-  { title:'13. Какая цифра наименьшая (при равенстве — обе)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
-    compute:(d1,d2,d3)=>{ const m=Math.min(d1,d2,d3); const r=[]; if(d1===m)r.push('first'); if(d2===m)r.push('second'); if(d3===m)r.push('third'); return r; } },
-  { title:'14. Какая цифра наибольшая (при равенстве — обе)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
-    compute:(d1,d2,d3)=>{ const m=Math.max(d1,d2,d3); const r=[]; if(d1===m)r.push('first'); if(d2===m)r.push('second'); if(d3===m)r.push('third'); return r; } },
-  { title:'27. Позиция "цифры-меньшинства" (когда две цифры совпадают, а одна другая)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third},{v:'none',l:'нет меньшинства'}],
+  { title:'13. Какая цифра наименьшая (без учёта равенства — только если строго меньше обеих других)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
     compute:(d1,d2,d3)=>{
-      const digits=[d1,d2,d3]; const names=['first','second','third']; const counts={};
-      digits.forEach(d=>counts[d]=(counts[d]||0)+1);
-      const values=Object.keys(counts).map(Number);
-      const hasPair=values.some(v=>counts[v]===2), hasSingle=values.some(v=>counts[v]===1);
-      if(!(hasPair&&hasSingle)) return ['none'];
-      const minorityValue=values.find(v=>counts[v]===1);
-      return [names[digits.findIndex(d=>d===minorityValue)]];
+      const r = [];
+      if (d1 < d2 && d1 < d3) r.push('first');
+      if (d2 < d1 && d2 < d3) r.push('second');
+      if (d3 < d1 && d3 < d2) r.push('third');
+      return r;
+    } },
+  { title:'14. Какая цифра наибольшая (без учёта равенства — только если строго больше обеих других)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{
+      const r = [];
+      if (d1 > d2 && d1 > d3) r.push('first');
+      if (d2 > d1 && d2 > d3) r.push('second');
+      if (d3 > d1 && d3 > d2) r.push('third');
+      return r;
+    } },
+  { title:'32. Какая цифра наибольшая (при равенстве — все, где стоит максимум)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{ const m=Math.max(d1,d2,d3); const r=[]; if(d1===m)r.push('first'); if(d2===m)r.push('second'); if(d3===m)r.push('third'); return r; } },
+  { title:'27. Позиция самой маленькой цифры (при равенстве — все, где стоит минимум)', options:[{v:'first',l:POS.first},{v:'second',l:POS.second},{v:'third',l:POS.third}],
+    compute:(d1,d2,d3)=>{
+      const min = Math.min(d1,d2,d3);
+      const r = [];
+      if (d1 === min) r.push('first');
+      if (d2 === min) r.push('second');
+      if (d3 === min) r.push('third');
+      return r;
     } },
 
   { title:'15. Чего больше — чётных или нечётных цифр', options:[{v:'even_more',l:'чётных больше'},{v:'odd_more',l:'нечётных больше'}],
@@ -264,7 +277,7 @@ const criteria = [
   { title:'17. Чётность суммы всех цифр', options:[{v:'even',l:'чётная'},{v:'odd',l:'нечётная'}],
     compute:(d1,d2,d3)=>[(d1+d2+d3)%2===0?'even':'odd'] },
   { title:'26. Чётность цифр по позициям', options:[{v:'first',l:POS.first+' чётная'},{v:'second',l:POS.second+' чётная'},{v:'third',l:POS.third+' чётная'}],
-    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2===0)r.push('first'); if(d2%2===0)r.push('second'); if(d3%2===0)r.push('third'); return r; } },  
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2===0)r.push('first'); if(d2%2===0)r.push('second'); if(d3%2===0)r.push('third'); return r; } },
   { title:'31. Нечётность цифр по позициям', options:[{v:'first',l:POS.first+' нечётная'},{v:'second',l:POS.second+' нечётная'},{v:'third',l:POS.third+' нечётная'}],
     compute:(d1,d2,d3)=>{ const r=[]; if(d1%2!==0)r.push('first'); if(d2%2!==0)r.push('second'); if(d3%2!==0)r.push('third'); return r; } },
 
@@ -294,6 +307,8 @@ const criteria = [
     compute:(d1,d2,d3)=>{ const r=[]; if(d1>1)r.push('first'); if(d2>1)r.push('second'); if(d3>1)r.push('third'); return r; } },
 ];
 
+document.getElementById('legend').innerHTML =
+  `Обозначения позиций: ${POS.first} первая цифра &nbsp;&nbsp; ${POS.second} вторая цифра &nbsp;&nbsp; ${POS.third} третья цифра`;
 
 // map each criterion by its title's leading number to a group
 function critIndexByNumber(num) {
@@ -325,54 +340,38 @@ const checkboxRegistry = criteria.map(() => []); // {input, chip, scope}
 // Hardcode card membership here: criterion number (as in its title, 1-30) -> array of card numbers.
 // Any criterion not listed gets an empty set (belongs to no card by default).
 const CARD_ASSIGNMENTS_BY_NUMBER = {
-  1: [24,25], //todo
-  2: [1],
-  3: [2],
-  4: [3],
-  5: [26],
-  6: [26],
-  7: [26],
-  8: [7],
-  9: [8],
-  10: [9],
-  11: [10], 
-  12: [11],
-  13: [12],
-  14: [13],
-  15: [14],
-  16: [15],
-  17: [16],
-  18: [17],
-  19: [18],
-  20: [19],
-  21: [19],
-  22: [20],
-  23: [21],
-  24: [22],
-  25: [22,23],
-  26: [1, 2, 3],
-  27: [4, 5, 6],
-  28: [24],
-  29: [1, 2, 3],
-  30: [4, 5, 6],
-  31: [25],
-  32: [1, 2, 3],
-  33: [26,31],
-  34: [13],
-  35: [14],
-  36: [28],
-  37: [29],
-  38: [30],
-  39: [24, 25],
-  40: [1,2,3],
-  41: [4, 5,6],
-  42: [13, 14],
-  43: [10, 11],
-  44: [10, 12],
-  45: [7, 8],
-  46: [8,9],
-  47: [7,9],
-  48: [10,11,12]
+  1: [2, 26, 29, 32, 40],
+  2: [3, 26, 29, 32, 40],
+  3: [4, 26, 29, 32, 40],
+  4: [27, 30, 41],
+  5: [27, 30, 41],
+  6: [27, 30, 41],
+  7: [8, 45, 47],
+  8: [9, 45, 46],
+  9: [10, 46, 47],
+  10: [11, 43, 44, 48],
+  11: [12, 43, 48],
+  12: [13, 44, 48],
+  13: [14, 42],
+  14: [15, 42],
+  15: [16],
+  16: [17],
+  17: [18],
+  18: [19],
+  19: [20, 21],
+  20: [22],
+  21: [23],
+  22: [24, 25],
+  23: [25],
+  24: [1, 28, 39],
+  25: [1, 31, 39],
+  26: [5, 6, 7, 33],
+  27: [34],
+  28: [36],
+  29: [37],
+  30: [38],
+  31: [33],
+  32: [35]
 };
 const cardAssignments = criteria.map(c => {
   const num = parseInt(c.title.split('.')[0], 10);
@@ -471,29 +470,6 @@ function buildFilterItem(idx, scope, extraControl) {
   clearBtn.addEventListener('click', () => clearFilter(idx));
   head.appendChild(clearBtn);
 
-  // if (scope === 'accordion') {
-  //   // inline control to assign this filter to one or several cards
-  //   const assignWrap = document.createElement('div');
-  //   assignWrap.className = 'assign-wrap';
-  //   const assignLabel = document.createElement('span');
-  //   assignLabel.textContent = 'карточки:';
-  //   const assignInput = document.createElement('input');
-  //   assignInput.type = 'text';
-  //   assignInput.className = 'assign-input';
-  //   assignInput.placeholder = '1,3';
-  //   assignInput.value = Array.from(cardAssignments[idx]).sort((a,b)=>a-b).join(',');
-  //   assignInput.addEventListener('change', () => {
-  //     const nums = assignInput.value.split(',')
-  //       .map(s => parseInt(s.trim(), 10))
-  //       .filter(n => !isNaN(n) && n >= 1 && n <= 12);
-  //     cardAssignments[idx] = new Set(nums);
-  //     renderCardView();
-  //   });
-  //   assignWrap.appendChild(assignLabel);
-  //   assignWrap.appendChild(assignInput);
-  //   head.appendChild(assignWrap);
-  // }
-
   if (extraControl) head.appendChild(extraControl);
 
   item.appendChild(head);
@@ -535,15 +511,15 @@ function renderCardView() {
 
   const raw = cardInput.value.trim();
   if (!raw) {
-    cardView.innerHTML = '<div class="card-empty">Номера карт критериев:</div>';
+    cardView.innerHTML = '<div class="card-empty">Введите номер карточки, чтобы увидеть её фильтры</div>';
     return;
   }
 
   const cardNums = [...new Set(
-    raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1 && n <= 48)
+    raw.split(',').map(s => parseInt(s.trim(), 10)).filter(n => !isNaN(n) && n >= 1)
   )];
   if (cardNums.length === 0) {
-    cardView.innerHTML = '<div class="card-empty">Некорректный номер карточки (используйте 1–48)</div>';
+    cardView.innerHTML = '<div class="card-empty">Некорректный номер карточки</div>';
     return;
   }
 
