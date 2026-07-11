@@ -264,7 +264,9 @@ const criteria = [
   { title:'17. Чётность суммы всех цифр', options:[{v:'even',l:'чётная'},{v:'odd',l:'нечётная'}],
     compute:(d1,d2,d3)=>[(d1+d2+d3)%2===0?'even':'odd'] },
   { title:'26. Чётность цифр по позициям', options:[{v:'first',l:POS.first+' чётная'},{v:'second',l:POS.second+' чётная'},{v:'third',l:POS.third+' чётная'}],
-    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2===0)r.push('first'); if(d2%2===0)r.push('second'); if(d3%2===0)r.push('third'); return r; } },
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2===0)r.push('first'); if(d2%2===0)r.push('second'); if(d3%2===0)r.push('third'); return r; } },  
+  { title:'31. Нечётность цифр по позициям', options:[{v:'first',l:POS.first+' нечётная'},{v:'second',l:POS.second+' нечётная'},{v:'third',l:POS.third+' нечётная'}],
+    compute:(d1,d2,d3)=>{ const r=[]; if(d1%2!==0)r.push('first'); if(d2%2!==0)r.push('second'); if(d3%2!==0)r.push('third'); return r; } },
 
   { title:`18. Сумма ${POS.first}+${POS.second} относительно 6`, options:[{v:'lt',l:'меньше 6'},{v:'eq',l:'равна 6'},{v:'gt',l:'больше 6'}],
     compute:(d1,d2,d3)=>[cmp(d1+d2,6)] },
@@ -302,7 +304,7 @@ const groups = [
   { title:'Количество цифр данного вида', nums:[7,8,9,16] },
   { title:'Сравнение цифр между собой', nums:[10,11,12] },
   { title:'Позиция минимума / максимума / "меньшинства"', nums:[13,14,27] },
-  { title:'Чётность', nums:[15,17,26] },
+  { title:'Чётность', nums:[15,17,26,31] },
   { title:'Суммы цифр', nums:[18,21,28,29,30] },
   { title:'Повторения и последовательности', nums:[19,20,22,23] },
   { title:'Позиция конкретных цифр (1 и >1)', nums:[24,25] },
@@ -355,7 +357,7 @@ const CARD_ASSIGNMENTS_BY_NUMBER = {
   30: [4, 5, 6],
   31: [25],
   32: [1, 2, 3],
-  33: [26],// todo?
+  33: [26,31],
   34: [13],
   35: [14],
   36: [28],
