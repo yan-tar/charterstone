@@ -37,10 +37,10 @@
     font-size:11.5px; color:var(--text-dim); margin-bottom:12px; padding:8px 10px;
     background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
   }
-  .pos-icon{ font-weight:700; margin:0 2px; font-size: 2em;position: relative;top: 0.2em;line-height: 1;}
+  .pos-icon{ font-weight:700; margin:0 2px; font-size: 3em;transform: translateY(2px);line-height: 1.5rem;}
   .pos-first{ color:#4fa8e0; }
-  .pos-second{ color:#e0c040; font-size: 4em;top: 0.1em;}
-  .pos-third{ color:#a374e0; font-size: 5em;}
+  .pos-second{ color:#e0c040; font-size: 4em;transform: translateY(-4px);}
+  .pos-third{ color:#a374e0; font-size: 5em;transform: translateY(-2px);}
 
   .card-lookup{
     background:var(--panel); border:1px solid var(--panel-border); border-radius:8px;
