@@ -75,18 +75,14 @@ function countLabel(count) { return ['none','one','two','three'][count]; }
 
 // ---------- Criteria definitions (compute returns array of matched option values) ----------
 const criteria = [
-  { title:`1. ${POS.first} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
-    compute:(d1,d2,d3)=>[cmp(d1,3)] },
-  { title:`2. ${POS.second} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
-    compute:(d1,d2,d3)=>[cmp(d2,3)] },
-  { title:`3. ${POS.third} относительно 3`, options:[{v:'lt',l:'меньше трёх'},{v:'eq',l:'равна трём'},{v:'gt',l:'больше трёх'}],
-    compute:(d1,d2,d3)=>[cmp(d3,3)] },
-  { title:`4. ${POS.second} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
-    compute:(d1,d2,d3)=>[cmp(d2,4)] },
-  { title:`5. ${POS.first} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
-    compute:(d1,d2,d3)=>[cmp(d1,4)] },
-  { title:`6. ${POS.third} относительно 4`, options:[{v:'lt',l:'меньше четырёх'},{v:'eq',l:'равна четырём'},{v:'gt',l:'больше четырёх'}],
-    compute:(d1,d2,d3)=>[cmp(d3,4)] },
+  // Filters 1-3: replaced the old six threshold filters (vs 3 / vs 4) with a single
+  // "which value (1-5) sits at this position" filter per position.
+  { title:`1. ${POS.first} — значение`, options:[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}],
+    compute:(d1,d2,d3)=>[String(d1)] },
+  { title:`2. ${POS.second} — значение`, options:[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}],
+    compute:(d1,d2,d3)=>[String(d2)] },
+  { title:`3. ${POS.third} — значение`, options:[{v:'1',l:'1'},{v:'2',l:'2'},{v:'3',l:'3'},{v:'4',l:'4'},{v:'5',l:'5'}],
+    compute:(d1,d2,d3)=>[String(d3)] },
 
   { title:'7. Количество единиц в числе', options:[{v:'none',l:'нет'},{v:'one',l:'одна'},{v:'two',l:'две'},{v:'three',l:'три'}],
     compute:(d1,d2,d3)=>[countLabel(countDigit([d1,d2,d3],1))] },
@@ -175,7 +171,7 @@ function critIndexByNumber(num) {
   return criteria.findIndex(c => c.title.startsWith(num + '.'));
 }
 const groups = [
-  { title:'Сравнение цифр с порогами 3 и 4', nums:[1,2,3,4,5,6] },
+  { title:'Значение цифры на каждой позиции', nums:[1,2,3] },
   { title:'Количество цифр данного вида', nums:[7,8,9,16] },
   { title:'Сравнение цифр между собой', nums:[10,11,12] },
   { title:'Позиция минимума / максимума / "меньшинства"', nums:[13,14,27] },
@@ -197,15 +193,16 @@ for (let d1=1; d1<=5; d1++)
 // ---------- Shared filter state (single source of truth for all rendered copies of a filter) ----------
 const selectedState = criteria.map(() => new Set());
 const checkboxRegistry = criteria.map(() => []); // {input, chip, scope}
-// Hardcode card membership here: criterion number (as in its title, 1-30) -> array of card numbers.
+// Hardcode card membership here: criterion number (as in its title) -> array of card numbers.
 // Any criterion not listed gets an empty set (belongs to no card by default).
+// NOTE: filters 1-3 replaced the old six threshold filters (old 1,2,3 = position vs 3;
+// old 4,5,6 = position vs 4). Card assignments below merge the old pairs that shared a
+// position (old 1+5 -> new 1, old 2+4 -> new 2, old 3+6 -> new 3). Please double-check
+// these merged assignments against your physical card set — the merge is a best guess.
 const CARD_ASSIGNMENTS_BY_NUMBER = {
-  1: [2, 26, 29, 32, 40],
-  2: [3, 26, 29, 32, 40],
-  3: [26, 29, 32, 40],
-  4: [4, 27, 30, 41],
-  5: [27, 30, 41],
-  6: [27, 30, 41],
+  1: [2, 26, 27, 29, 30, 32, 40, 41],
+  2: [3, 4, 26, 27, 29, 30, 32, 40, 41],
+  3: [26, 27, 29, 30, 32, 40, 41],
   7: [8, 45, 47],
   8: [9, 45, 46],
   9: [10, 46, 47],
@@ -342,7 +339,7 @@ function buildFilterItem(idx, scope, extraControl) {
   return item;
 }
 
-// ---------- Render thematic accordion groups ----------
+// ---------- Render thematic accordion groups (collapsible via native <details>) ----------
 const groupsContainer = document.getElementById('groupsContainer');
 groups.forEach((g, gi) => {
   const details = document.createElement('details');
@@ -384,26 +381,36 @@ function renderCardView() {
   }
 
   cardNums.forEach(num => {
-    const box = document.createElement('div');
+    // Each card is now a collapsible <details> block, same interaction pattern as the
+    // thematic filter groups below.
+    const box = document.createElement('details');
     box.className = 'card-box';
+    box.open = true;
 
-    const headRow = document.createElement('div');
-    headRow.className = 'card-box-head';
+    const summary = document.createElement('summary');
+    summary.className = 'card-box-head';
     const titleEl = document.createElement('strong');
     titleEl.textContent = `Карточка ${num}`;
-    headRow.appendChild(titleEl);
+    summary.appendChild(titleEl);
+    summary.insertAdjacentHTML('beforeend', '<span class="arrow">&#9656;</span>');
 
     const restoreBtn = document.createElement('button');
     restoreBtn.className = 'btn';
     restoreBtn.textContent = 'Показать скрытые фильтры';
-    restoreBtn.addEventListener('click', () => {
+    restoreBtn.addEventListener('click', (e) => {
+      // Prevent the click from also toggling the <details> open/closed state.
+      e.preventDefault();
+      e.stopPropagation();
       Array.from(cardHiddenOverrides).forEach(key => {
         if (key.startsWith(num + ':')) cardHiddenOverrides.delete(key);
       });
       renderCardView();
     });
-    headRow.appendChild(restoreBtn);
-    box.appendChild(headRow);
+    summary.appendChild(restoreBtn);
+    box.appendChild(summary);
+
+    const body = document.createElement('div');
+    body.className = 'card-box-body';
 
     const matched = criteria
       .map((c, idx) => idx)
@@ -413,7 +420,7 @@ function renderCardView() {
       const empty = document.createElement('div');
       empty.className = 'card-empty';
       empty.textContent = 'Нет фильтров, назначенных этой карточке (назначьте их полем "карточки:" ниже, в общем списке фильтров)';
-      box.appendChild(empty);
+      body.appendChild(empty);
     } else {
       matched.forEach(idx => {
         const hideBtn = document.createElement('button');
@@ -425,10 +432,11 @@ function renderCardView() {
           cardHiddenOverrides.add(num + ':' + idx);
           renderCardView();
         });
-        box.appendChild(buildFilterItem(idx, 'card', hideBtn));
+        body.appendChild(buildFilterItem(idx, 'card', hideBtn));
       });
     }
 
+    box.appendChild(body);
     cardView.appendChild(box);
   });
 }
